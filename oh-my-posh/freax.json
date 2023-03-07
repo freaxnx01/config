@@ -23,7 +23,7 @@
             "display_host": false
           },
           "style": "diamond",
-          "template": " {{ if .SSHSession }}\uf817 {{ end }}{{ .HostName }} ",
+          "template": " {{ if .SSHSession }}\uf817 {{ end }}{{ .UserName }}@{{ .HostName }} ",
           "trailing_diamond": "\ue0b0",
           "type": "session"
         },
