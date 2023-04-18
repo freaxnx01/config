@@ -1,0 +1,48 @@
+# .bash_aliases_docker
+
+alias ..='cd ..'
+alias ll='ls -lah --color=auto'
+alias mc='sudo mc'
+
+updatemydocker() {
+    sudo chown $USER:$USER ~/mydocker-compose/*
+    git -C ~/mydocker-compose fetch --all
+    git -C ~/mydocker-compose reset --hard origin/master
+    git -C ~/mydocker-compose pull
+    find ~/mydocker-compose -name "*.sh" -exec chmod +x {} \;
+    find ~/mydocker-compose -name ".chown-root" -exec sh -xvc 'sudo chown root:root $(dirname $0)/*' {} \;
+}
+
+function set-env() {
+    export HOSTNAME=$HOSTNAME
+}
+
+function dcup() {
+    set-env
+    docker compose -f ~/mydocker/docker-compose.yml up -d --remove-orphans
+}
+
+alias u='updatemydocker'
+
+alias uu='updatemydocker && up'
+alias dps='docker ps'
+
+alias dcdown='docker compose -f ~/mydocker/docker-compose.yml down'
+alias dcdown-admin='docker compose -f ~/mydocker-admin/docker-compose.yml down'
+alias down='dcdown; dcdown-admin'
+
+#alias dcup='docker compose -f ~/mydocker/docker-compose.yml up -d --remove-orphans'
+alias dcup-admin='docker compose -f ~/mydocker-admin/docker-compose.yml up -d --remove-orphans'
+alias up='dcup; dcup-admin'
+
+dconn() {
+    docker exec -it $1 /bin/bash
+}
+
+dconna() {
+    docker exec -it $1 /bin/ash
+}
+
+alias start='docker compose -f ~/mydocker/docker-compose.yml start'
+alias stop='docker compose -f ~/mydocker/docker-compose.yml stop'
+alias restart='docker compose -f ~/mydocker/docker-compose.yml restart'
