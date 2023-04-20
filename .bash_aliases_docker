@@ -9,8 +9,8 @@ updatemydocker() {
     git -C ~/mydocker-compose fetch --all
     git -C ~/mydocker-compose reset --hard origin/master
     git -C ~/mydocker-compose pull
-    find ~/mydocker-compose -name "*.sh" -exec chmod +x {} \;
-    find ~/mydocker-compose -name ".chown-root" -exec sh -xvc 'sudo chown root:root $(dirname $0)/*' {} \;
+    cd ~; find ~/mydocker-compose -name "*.sh" -exec chmod +x {} \;
+    cd ~; find ~/mydocker-compose -name ".chown-root" -exec sh -xvc 'sudo chown root:root $(dirname $0)/*' {} \;
 }
 
 function set-env() {
