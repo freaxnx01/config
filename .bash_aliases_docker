@@ -46,3 +46,5 @@ dconna() {
 alias start='docker compose -f ~/mydocker/docker-compose.yml start'
 alias stop='docker compose -f ~/mydocker/docker-compose.yml stop'
 alias restart='docker compose -f ~/mydocker/docker-compose.yml restart'
+
+alias dlog='docker logs -f'
