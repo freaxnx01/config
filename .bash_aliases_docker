@@ -48,3 +48,5 @@ alias stop='docker compose -f ~/mydocker/docker-compose.yml stop'
 alias restart='docker compose -f ~/mydocker/docker-compose.yml restart'
 
 alias dlog='docker logs -f'
+
+alias acme-json='sudo chown -R $USER:$USER traefik && touch traefik/acme.json && chmod 600 traefik/acme.json'
