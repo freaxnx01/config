@@ -149,6 +149,7 @@
   ],
   "console_title_template": "{{ .Shell }} in {{ .Folder }}",
   "final_space": true,
+  "auto_upgrade": true,
   "palette": {
     "black": "#262B44",
     "blue": "#4B95E9",
