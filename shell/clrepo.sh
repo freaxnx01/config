@@ -536,8 +536,8 @@ print(d.get('telegram_user_id', ''))
 " 2>/dev/null)
   [ -z "$owner_id" ] && return
 
-  local bot_name="Claude · ${repo}"
-  [ -n "$worktree" ] && bot_name="Claude · ${repo} [${worktree}]"
+  local bot_name="#${slot} Claude · ${repo}"
+  [ -n "$worktree" ] && bot_name="#${slot} Claude · ${repo} [${worktree}]"
   # Truncate to 64 chars (Telegram limit)
   bot_name="${bot_name:0:64}"
 
@@ -583,7 +583,7 @@ print(d.get('telegram_user_id', ''))
 
   local api="https://api.telegram.org/bot${token}"
   curl -sf -X POST "$api/setMyName" \
-    -d "$(printf '{"name":"Claude · idle s%s"}' "$slot")" >/dev/null 2>&1 || true
+    -d "$(printf '{"name":"#%s Claude · idle"}' "$slot")" >/dev/null 2>&1 || true
   curl -sf -X POST "$api/sendMessage" \
     -H "Content-Type: application/json" \
     -d "$(printf '{"chat_id":"%s","text":"🛑 Session s%s closed"}' "$owner_id" "$slot")" >/dev/null 2>&1 || true
