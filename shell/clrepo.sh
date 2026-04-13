@@ -536,8 +536,8 @@ print(d.get('telegram_user_id', ''))
 " 2>/dev/null)
   [ -z "$owner_id" ] && return
 
-  local bot_name="#${slot} Claude · ${repo}"
-  [ -n "$worktree" ] && bot_name="#${slot} Claude · ${repo} [${worktree}]"
+  local bot_name="#${slot} Claude - ${repo}"
+  [ -n "$worktree" ] && bot_name="#${slot} Claude - ${repo} [${worktree}]"
   # Truncate to 64 chars (Telegram limit)
   bot_name="${bot_name:0:64}"
 
