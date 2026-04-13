@@ -668,7 +668,7 @@ _clrepo_launch() {
   # Allocate a slot
   _clrepo_slot_allocate "${_CLREPO_FORCED_SLOT:-}" || return
 
-  local -a claude_args=(-n "$repo" --channels plugin:telegram@claude-plugins-official)
+  local -a claude_args=(-n "$repo" --dangerously-skip-permissions --channels plugin:telegram@claude-plugins-official)
   [ -n "$worktree" ] && claude_args+=(--worktree "$worktree")
 
   export CLAUDE_CONFIG_DIR="$HOME/.claude-s${_SLOT}"
