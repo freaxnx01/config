@@ -692,6 +692,7 @@ _clrepo_launch() {
     # New tmux session
     _clrepo_telegram_setup "$_SLOT" "$repo" "$worktree" "$_SLOT_TOKEN"
     tmux new-session -d -s "$session"       -e "CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR"       -e "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN"       claude "${claude_args[@]}"
+    tmux set-hook -t "$session" session-closed "run-shell '$HOME/.cache/clrepo/cleanup.sh $_SLOT $_SLOT_TOKEN'"
 
     local pid
     pid=$(tmux display-message -t "$session" -p '#{pane_pid}' 2>/dev/null || echo 0)
