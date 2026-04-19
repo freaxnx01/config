@@ -380,7 +380,7 @@ Replace the block above with:
     # Name miss — try metadata search.
     local meta_hits count hit_path was_remote=0
     meta_hits=$(_clrepo_meta_search "$1")
-    count=$(printf '%s' "$meta_hits" | grep -c '^' 2>/dev/null || echo 0)
+    count=$(printf '%s' "$meta_hits" | grep -c '^' 2>/dev/null); count=${count:-0}
 
     if [ "$count" = 0 ]; then
       echo "clrepo: no such repo: $1" >&2
