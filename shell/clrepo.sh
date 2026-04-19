@@ -874,11 +874,47 @@ EOF
   fi
 
   # Positional shortcut: case-insensitive exact-basename lookup, local-only.
+  # If name misses, fall back to metadata (topics + description) search.
   if [ "$mode_delete" = 0 ] && [ -n "$1" ]; then
     local sel
     sel=$(printf '%s\n' "$all" | grep -Ei "(^|/)$1$" | head -1)
-    [ -z "$sel" ] && { echo "clrepo: no such repo: $1"; return 1; }
-    _clrepo_launch "$sel" "$worktree"
+    if [ -n "$sel" ]; then
+      _clrepo_launch "$sel" "$worktree"
+      return
+    fi
+
+    # Name miss — try metadata search.
+    local meta_hits count hit_path was_remote=0
+    meta_hits=$(_clrepo_meta_search "$1")
+    count=$(printf '%s' "$meta_hits" | grep -c '^' 2>/dev/null); count=${count:-0}
+
+    if [ "$count" = 0 ]; then
+      echo "clrepo: no such repo: $1" >&2
+      return 1
+    fi
+
+    if [ "$count" = 1 ]; then
+      hit_path=$(printf '%s' "$meta_hits" | cut -f2)
+      printf '%s\n' "$all" | grep -qxF "$hit_path" || was_remote=1
+      if [ "$was_remote" = 1 ]; then
+        _clrepo_clone_remote "$hit_path" || return 1
+      fi
+      _clrepo_launch "$hit_path" "$worktree"
+      return
+    fi
+
+    # 2+ hits — annotated fzf picker.
+    local pick
+    pick=$(printf '%s\n' "$meta_hits" \
+      | awk -F'\t' '{ printf "%-50s  [%s: %s]\n", $2, $1, $3 }' \
+      | fzf --height=40% --reverse --prompt="match '$1'> " --with-nth=1..) || return
+    hit_path=$(printf '%s' "$pick" | awk '{print $1}')
+    [ -z "$hit_path" ] && return
+    printf '%s\n' "$all" | grep -qxF "$hit_path" || was_remote=1
+    if [ "$was_remote" = 1 ]; then
+      _clrepo_clone_remote "$hit_path" || return 1
+    fi
+    _clrepo_launch "$hit_path" "$worktree"
     return
   fi
 
