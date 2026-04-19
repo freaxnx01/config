@@ -150,6 +150,57 @@ _clrepo_remote_list() {
   mv "$tmp_meta" "$meta_cache"
 }
 
+# Search cached forge metadata (~/.cache/clrepo/repo-meta.json) for a keyword.
+# Case-insensitive substring match against each topic and against description.
+# Emits TSV: <hit_type>\t<rel_path>\t<snippet>
+#   hit_type = "topic" | "desc"
+#   snippet  = matched topic name, or a ~50-char window around the desc match
+# Topic hits are listed first, then desc hits; each group sorted by basename.
+# A repo with both hit types is reported once, as "topic".
+_clrepo_meta_search() {
+  local kw="$1"
+  local meta="$_CLREPO_CACHE/repo-meta.json"
+  [ -z "$kw" ] && return 0
+  [ -f "$meta" ] || return 0
+
+  jq -r --arg kw "$kw" '
+    def ci($s): $s | ascii_downcase;
+    def contains_ci($needle; $hay): ci($hay) | contains(ci($needle));
+    def snippet($text; $needle):
+      (ci($text) | index(ci($needle))) as $i
+      | if $i == null then ""
+        else
+          ([$i - 20, 0] | max) as $s
+          | ([$i + ($needle | length) + 20, ($text | length)] | min) as $e
+          | ($text[$s:$e])
+          | (if $s > 0 then "..." + . else . end)
+          | (if $e < ($text | length) then . + "..." else . end)
+        end;
+
+    . as $src
+    | [ $src | to_entries[]
+        | .key as $path
+        | (.value.topics // [])
+        | map(select(contains_ci($kw; .)))
+        | .[]
+        | { type: "topic", path: $path, snippet: . }
+      ] as $topics
+    | ($topics | map(.path)) as $topic_paths
+    | [ $src | to_entries[]
+        | .key as $path
+        | .value as $v
+        | select(($topic_paths | any(. == $path)) | not)
+        | select(contains_ci($kw; ($v.description // "")))
+        | { type: "desc", path: $path,
+            snippet: (snippet($v.description; $kw)) }
+      ] as $descs
+    | ($topics | sort_by(.path | split("/") | last))
+      + ($descs | sort_by(.path | split("/") | last))
+    | .[]
+    | [.type, .path, .snippet] | @tsv
+  ' "$meta" 2>/dev/null
+}
+
 # Clone-URL for an (existing) remote repo at rel path, inferred from layout.
 # GitHub → HTTPS (auth via GH_TOKEN + inline credential helper; no SSH key needed).
 # GitLab → HTTPS (auth via GitLab .envrc GIT_CONFIG_* credential helper).
