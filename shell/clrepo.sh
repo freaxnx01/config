@@ -108,10 +108,13 @@ _clrepo_fetch_target() {
 
 # Union of remote listings across all targets, cached with TTL.
 # Streams per-forge output to stdout (for live fzf) while also writing
-# to a tmp file that becomes the cache on completion.
+# to tmp files that become caches on completion:
+#   - remote.list      : plain rel paths (back-compat for the picker stream)
+#   - repo-meta.json   : { rel: {description, topics[], fetched_at} }
 _clrepo_remote_list() {
   local force="$1"
   local cache="$_CLREPO_CACHE/remote.list"
+  local meta_cache="$_CLREPO_CACHE/repo-meta.json"
   local now age
   now=$(date +%s)
   if [ "$force" != 1 ] && [ -f "$cache" ]; then
@@ -121,12 +124,30 @@ _clrepo_remote_list() {
     fi
   fi
   echo "clrepo: fetching remote repo listings..." >&2
-  local tmp
-  tmp=$(mktemp)
+  local tmp_list tmp_meta
+  tmp_list=$(mktemp)
+  tmp_meta=$(mktemp)
+  echo '{}' > "$tmp_meta"
   _clrepo_targets | while IFS=$'\t' read -r rel forge owner vis; do
-    _clrepo_fetch_target "$rel" "$forge" "$owner" "$vis" | tee -a "$tmp"
+    _clrepo_fetch_target "$rel" "$forge" "$owner" "$vis" \
+      | while IFS=$'\t' read -r rpath desc topics_csv; do
+          [ -z "$rpath" ] && continue
+          # Stream path-only to stdout and remote.list (back-compat)
+          printf '%s\n' "$rpath" | tee -a "$tmp_list"
+          # Merge into repo-meta.json
+          jq --arg k "$rpath" --arg d "$desc" --arg t "$topics_csv" --argjson ts "$now" '
+            . + {
+              ($k): {
+                description: $d,
+                topics: ($t | if . == "" then [] else split(",") end),
+                fetched_at: $ts
+              }
+            }
+          ' "$tmp_meta" > "$tmp_meta.new" && mv "$tmp_meta.new" "$tmp_meta"
+        done
   done
-  mv "$tmp" "$cache"
+  mv "$tmp_list" "$cache"
+  mv "$tmp_meta" "$meta_cache"
 }
 
 # Clone-URL for an (existing) remote repo at rel path, inferred from layout.
