@@ -54,7 +54,9 @@ _clrepo_targets() {
 }
 
 # Fetch remote repo names for one target (loaded via direnv in a subshell).
-# Emits: <rel_target>/<repo_name> per line.
+# Emits TSV: <rel_path>\t<description>\t<topics_csv>
+# - description: tabs/newlines replaced with spaces; empty if null
+# - topics_csv:  comma-separated; empty if none
 _clrepo_fetch_target() {
   local rel="$1" forge="$2" owner="$3" vis="$4"
   (
@@ -67,20 +69,38 @@ _clrepo_fetch_target() {
         curl -sf -H "Authorization: token $tok" \
           -H "Accept: application/vnd.github+json" \
           "https://api.github.com/user/repos?affiliation=owner&visibility=$vis&per_page=100" \
-          | jq -r --arg rel "$rel" --arg o "$owner" \
-              '.[] | select(.owner.login == $o) | "\($rel)/\(.name)"' 2>/dev/null
+          | jq -r --arg rel "$rel" --arg o "$owner" '
+              .[]
+              | select(.owner.login == $o)
+              | [ "\($rel)/\(.name)",
+                  ((.description // "") | gsub("[\\t\\n\\r]"; " ")),
+                  ((.topics // []) | join(",")) ]
+              | @tsv
+            ' 2>/dev/null
         ;;
       gitlab)
         [ -z "$GITLAB_TOKEN" ] && exit
         curl -sf -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
           "https://gitlab.freaxnx01.ch/api/v4/projects?owned=true&per_page=100" \
-          | jq -r --arg rel "$rel" '.[] | "\($rel)/\(.path)"' 2>/dev/null
+          | jq -r --arg rel "$rel" '
+              .[]
+              | [ "\($rel)/\(.path)",
+                  ((.description // "") | gsub("[\\t\\n\\r]"; " ")),
+                  ((.topics // []) | join(",")) ]
+              | @tsv
+            ' 2>/dev/null
         ;;
       forgejo)
         [ -z "$FORGEJO_TOKEN" ] && exit
         curl -sf -H "Authorization: token $FORGEJO_TOKEN" \
           "https://git.home.freaxnx01.ch/api/v1/user/repos?limit=50" \
-          | jq -r --arg rel "$rel" '.[] | "\($rel)/\(.name)"' 2>/dev/null
+          | jq -r --arg rel "$rel" '
+              .[]
+              | [ "\($rel)/\(.name)",
+                  ((.description // "") | gsub("[\\t\\n\\r]"; " ")),
+                  ((.topics // []) | join(",")) ]
+              | @tsv
+            ' 2>/dev/null
         ;;
     esac
   )
