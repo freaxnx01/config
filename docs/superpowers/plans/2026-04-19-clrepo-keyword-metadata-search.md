@@ -276,21 +276,23 @@ _clrepo_meta_search() {
           | (if $e < ($text | length) then . + "..." else . end)
         end;
 
-    to_entries
-    | map(. as $entry
-          | ($entry.value.topics // [])
-          | map(select(contains_ci($kw; .)))
-          | map({ type: "topic", path: $entry.key, snippet: . })
-         ) | add // []
-    | . as $topics
-    | (to_entries
-       | map(select(
-             ($topics | map(.path) | index(.key)) == null
-             and contains_ci($kw; (.value.description // ""))
-           ))
-       | map({ type: "desc", path: .key,
-               snippet: (snippet(.value.description; $kw)) })
-      ) as $descs
+    . as $src
+    | [ $src | to_entries[]
+        | .key as $path
+        | (.value.topics // [])
+        | map(select(contains_ci($kw; .)))
+        | .[]
+        | { type: "topic", path: $path, snippet: . }
+      ] as $topics
+    | ($topics | map(.path)) as $topic_paths
+    | [ $src | to_entries[]
+        | .key as $path
+        | .value as $v
+        | select(($topic_paths | any(. == $path)) | not)
+        | select(contains_ci($kw; ($v.description // "")))
+        | { type: "desc", path: $path,
+            snippet: (snippet($v.description; $kw)) }
+      ] as $descs
     | ($topics | sort_by(.path | split("/") | last))
       + ($descs | sort_by(.path | split("/") | last))
     | .[]
