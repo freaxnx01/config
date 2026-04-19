@@ -260,7 +260,7 @@ _clrepo_clone_remote() {
   name=$(basename "$rel")
   echo "clrepo: cloning $url" >&2
   _clrepo_git_clone_in "$parent" "$url" "$name" || return 1
-  rm -f "$_CLREPO_CACHE/remote.list"
+  rm -f "$_CLREPO_CACHE/remote.list" "$_CLREPO_CACHE/repo-meta.json"
 }
 
 # Create a new remote repo on a chosen forge target, then clone + launch.
@@ -316,7 +316,7 @@ _clrepo_create_new() {
   [ -z "$url" ] && { echo "clrepo: remote creation failed"; return 1; }
   echo "clrepo: cloning $url" >&2
   _clrepo_git_clone_in "$target" "$url" "$name" || return 1
-  rm -f "$_CLREPO_CACHE/remote.list"
+  rm -f "$_CLREPO_CACHE/remote.list" "$_CLREPO_CACHE/repo-meta.json"
   _clrepo_launch "$target/$name"
 }
 
@@ -456,7 +456,7 @@ _clrepo_delete() {
     fi
   fi
 
-  rm -f "$_CLREPO_CACHE/remote.list"
+  rm -f "$_CLREPO_CACHE/remote.list" "$_CLREPO_CACHE/repo-meta.json"
   return 0
 }
 
@@ -910,12 +910,14 @@ EOF
       return
     fi
 
-    # 2+ hits — annotated fzf picker.
+    # 2+ hits — annotated fzf picker. Carry the raw path as a trailing
+    # tab-separated field so extraction is exact, regardless of any
+    # whitespace in the formatted display column.
     local pick
     pick=$(printf '%s\n' "$meta_hits" \
-      | awk -F'\t' '{ printf "%-50s  [%s: %s]\n", $2, $1, $3 }' \
-      | fzf --height=40% --reverse --prompt="match '$1'> " --with-nth=1..) || return
-    hit_path=$(printf '%s' "$pick" | awk '{print $1}')
+      | awk -F'\t' 'BEGIN{OFS="\t"} { printf "%-50s  [%s: %s]\t%s\n", $2, $1, $3, $2 }' \
+      | fzf --height=40% --reverse --prompt="match '$1'> " -d $'\t' --with-nth=1) || return
+    hit_path=$(printf '%s' "$pick" | awk -F'\t' '{print $2}')
     [ -z "$hit_path" ] && return
     printf '%s\n' "$all" | grep -qxF "$hit_path" || was_remote=1
     if [ "$was_remote" = 1 ]; then
