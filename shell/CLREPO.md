@@ -11,7 +11,7 @@ A bash function that picks a repo under `~/projects/repos/` via fzf and launches
 | Source file | `~/projects/repos/github/freaxnx01/public/config/shell/clrepo.sh` |
 | Repo | `github.com/freaxnx01/config` (public, branch `main`) |
 | bashrc source line | `~/.bashrc` lines 146–149 |
-| MRU + remote cache | `~/.cache/clrepo/` |
+| MRU + remote cache + metadata cache | `~/.cache/clrepo/` (`mru`, `remote.list`, `repo-meta.json`) |
 | Forgejo `.envrc` | `~/projects/repos/git-forgejo/.envrc` (not in a git repo, local-only artifact) |
 
 ## Repo tree layout
@@ -40,7 +40,7 @@ Adding a new forge target = create the directory + `.envrc` that loads the right
 
 ```
 clrepo                          # fzf picker (local, fast, MRU on top)
-clrepo <name>                   # case-insensitive basename lookup, local-only
+clrepo <name>                   # case-insensitive basename lookup; on miss, falls back to topic/description search
 clrepo -r                       # picker + streaming remote listings from all forges
 clrepo --refresh                # force-refresh remote cache, then pick
 clrepo -D <name>                # non-interactive delete (local repos only)
@@ -65,13 +65,32 @@ clrepo --help                   # usage
 | `_clrepo_launch()` | **Single launch point.** cd, update MRU, tmux wrap if SSH, then `claude`. The slot/telegram wrapper replaces this body. |
 | `_clrepo_targets()` | Walk `.envrc` tree → emit TSV of forge targets |
 | `_clrepo_fetch_target()` | One forge API call in a direnv-activated subshell |
-| `_clrepo_remote_list()` | Union of all targets, cached with 10min TTL, streams via `tee` |
+| `_clrepo_remote_list()` | Union of all targets, cached with 10min TTL, streams via `tee`; also persists `repo-meta.json` (description + topics per repo) |
+| `_clrepo_meta_search()` | Case-insensitive keyword match against cached topics + description; emits `<type>\t<path>\t<snippet>` TSV |
 | `_clrepo_clone_url()` | Infer clone URL from rel path (HTTPS for GitHub/GitLab, SSH for Forgejo) |
 | `_clrepo_git_clone_in()` | `git clone` with direnv-loaded creds; injects HTTPS credential helper for GitHub |
 | `_clrepo_clone_remote()` | Resolve URL + clone + invalidate cache |
 | `_clrepo_create_new()` | Forge picker → name prompt → API POST → clone → launch |
 | `_clrepo_delete()` | Dirty check → L/R/B prompt → type-to-confirm → API DELETE + rm -rf |
 | `_clrepo()` | Tab completion (case-insensitive basenames + flags) |
+
+## Keyword lookup (metadata fallback)
+
+If `clrepo <name>` doesn't match any local repo basename, it falls back to searching **topics and description** across the cached forge metadata (`~/.cache/clrepo/repo-meta.json`).
+
+- **Populated by** any run that reaches `_clrepo_remote_list` (i.e. `clrepo -r` or `clrepo --refresh`). Cache TTL applies; re-fetched together with `remote.list`.
+- **Match order:** topic hits rank above description hits. Within each group, sorted by repo basename.
+- **1 hit** → auto-launch. If the hit is an uncloned remote repo, clones first (same flow as picker).
+- **2+ hits** → fzf picker annotated with `<path>  [topic: <match>]` or `<path>  [desc: …snippet…]`.
+- **0 hits** → `clrepo: no such repo: <name>` (exit 1), same as before.
+
+To make a repo keyword-reachable, tag it on the forge:
+
+```bash
+gh repo edit <owner>/<repo> --add-topic <keyword>      # GitHub
+```
+
+GitLab and Forgejo also expose topics in their repo settings; topics and description are pulled from whichever API the `.envrc` target hits.
 
 ## Credential flow
 
