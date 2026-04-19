@@ -130,7 +130,14 @@ _clrepo_remote_list() {
   echo '{}' > "$tmp_meta"
   _clrepo_targets | while IFS=$'\t' read -r rel forge owner vis; do
     _clrepo_fetch_target "$rel" "$forge" "$owner" "$vis" \
-      | while IFS=$'\t' read -r rpath desc topics_csv; do
+      | while IFS= read -r line; do
+          # Split 3-field TSV manually: bash `read` with IFS=$'\t' collapses
+          # consecutive tabs (tab is POSIX whitespace), which drops empty fields.
+          [ -z "$line" ] && continue
+          rpath=${line%%$'\t'*}
+          rest=${line#*$'\t'}
+          desc=${rest%%$'\t'*}
+          topics_csv=${rest#*$'\t'}
           [ -z "$rpath" ] && continue
           # Stream path-only to stdout and remote.list (back-compat)
           printf '%s\n' "$rpath" | tee -a "$tmp_list"
