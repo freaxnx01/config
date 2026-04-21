@@ -22,6 +22,8 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
+_CLREPO_VERSION="1.0.0"
+
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
 _CLREPO_REMOTE_TTL=600  # seconds
@@ -901,6 +903,8 @@ clrepo() {
       -w|--worktree)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a worktree name" >&2; return 2; }
         worktree="$2"; shift 2 ;;
+      -V|--version)
+        echo "clrepo $_CLREPO_VERSION"; return 0 ;;
       -h|--help)
         cat <<'EOF'
 Usage: clrepo [options] [repo-name|.]
@@ -910,10 +914,11 @@ Usage: clrepo [options] [repo-name|.]
       --refresh         force refresh of remote cache (implies -r)
   -D, --delete          delete a repo (local and/or remote); with <name> or via picker
   -w, --worktree NAME   pass through to `claude --worktree NAME`
-  --slot N                force a specific slot (1..N)
-  --no-channel            legacy mode, no slot allocation, no Telegram
-  --status                show slot status table
-  --free N                force-free slot N (escape hatch)
+  -V, --version         print version and exit
+  --slot N              force a specific slot (1..N)
+  --no-channel          legacy mode, no slot allocation, no Telegram
+  --status              show slot status table
+  --free N              force-free slot N (escape hatch)
 In picker:
   Enter   launch (cloning first if remote)
   Ctrl-N  create new remote repo (current query becomes seed name)
@@ -1065,7 +1070,7 @@ _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
-    local flags="-r --remote --refresh -D --delete -w --worktree -h --help"
+    local flags="-r --remote --refresh -D --delete -w --worktree -V --version -h --help"
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
