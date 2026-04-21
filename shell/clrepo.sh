@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.3.0"
+_CLREPO_VERSION="1.3.1"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -847,8 +847,12 @@ _clrepo_launch() {
   local repo
   repo=$(basename "$sel")
 
-  printf 'clrepo: %s\n' "$PWD" >&2
-  printf 'clrepo: %s\n' "$(git remote get-url origin 2>/dev/null || echo '(no remote)')" >&2
+  local _remote_url
+  _remote_url=$(git remote get-url origin 2>/dev/null || echo '(no remote)')
+  # Write to cache for reference after Claude takes over the terminal
+  printf '%s\n%s\n' "$PWD" "$_remote_url" > "$_CLREPO_CACHE/last"
+  # Set terminal window title — survives Claude's alternate-screen takeover
+  printf '\033]0;%s  %s\007' "$repo" "$_remote_url" >&2
 
   # VS Code mode — open directory, skip slot/Telegram/tmux entirely
   if [ "$editor" = "code" ]; then
