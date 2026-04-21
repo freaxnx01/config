@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.3.1"
+_CLREPO_VERSION="1.3.2"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -835,6 +835,13 @@ for n in sorted(d.get('slots', {}).keys(), key=int):
 " 2>/dev/null
 }
 
+_clrepo_print_last() {
+  local f="$_CLREPO_CACHE/last"
+  [ -f "$f" ] || return
+  printf 'clrepo: path:   %s\n' "$(sed -n '1p' "$f")" >&2
+  printf 'clrepo: remote: %s\n' "$(sed -n '2p' "$f")" >&2
+}
+
 _clrepo_launch() {
   local sel="$1"
   local worktree="${2:-}"
@@ -849,14 +856,12 @@ _clrepo_launch() {
 
   local _remote_url
   _remote_url=$(git remote get-url origin 2>/dev/null || echo '(no remote)')
-  # Write to cache for reference after Claude takes over the terminal
   printf '%s\n%s\n' "$PWD" "$_remote_url" > "$_CLREPO_CACHE/last"
-  # Set terminal window title — survives Claude's alternate-screen takeover
-  printf '\033]0;%s  %s\007' "$repo" "$_remote_url" >&2
 
   # VS Code mode — open directory, skip slot/Telegram/tmux entirely
   if [ "$editor" = "code" ]; then
     code .
+    _clrepo_print_last
     return
   fi
 
@@ -873,6 +878,7 @@ _clrepo_launch() {
     else
       claude "${claude_args[@]}"
     fi
+    _clrepo_print_last
     return
   fi
 
@@ -909,6 +915,7 @@ _clrepo_launch() {
     pid=$(tmux display-message -t "$session" -p '#{pane_pid}' 2>/dev/null || echo 0)
     _clrepo_slot_record "$_SLOT" "$repo" "$worktree" "$pid"
     tmux attach-session -t "$session"
+    _clrepo_print_last
     # On detach: slot stays allocated (claude is still running in tmux).
     # PID reconciliation will free it when claude actually exits.
   else
@@ -918,6 +925,7 @@ _clrepo_launch() {
     claude "${claude_args[@]}"
     _clrepo_slot_free "$_SLOT"
     _clrepo_telegram_cleanup "$_SLOT" "$_SLOT_TOKEN"
+    _clrepo_print_last
   fi
 }
 
