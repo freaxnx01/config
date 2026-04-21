@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.1.1"
+_CLREPO_VERSION="1.2.0"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -838,6 +838,7 @@ for n in sorted(d.get('slots', {}).keys(), key=int):
 _clrepo_launch() {
   local sel="$1"
   local worktree="${2:-}"
+  local editor="${3:-}"
   local mru="$_CLREPO_CACHE/mru"
   cd "$_CLREPO_BASE/$sel" || return
   { printf '%s
@@ -845,6 +846,12 @@ _clrepo_launch() {
 
   local repo
   repo=$(basename "$sel")
+
+  # VS Code mode — open directory, skip slot/Telegram/tmux entirely
+  if [ "$editor" = "code" ]; then
+    code .
+    return
+  fi
 
   # --- Slot allocation (skip with --no-channel or missing setup) ---
   if [ "${_CLREPO_NO_CHANNEL:-0}" = 1 ] || [ ! -f "$_CLREPO_SLOTS_FILE" ]; then
@@ -909,7 +916,7 @@ _clrepo_launch() {
 
 
 clrepo() {
-  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT=""
+  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT=""
   local -a pos=()
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -924,6 +931,7 @@ clrepo() {
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
       -D|--delete)    mode_delete=1; shift ;;
+      --code)         editor=code; shift ;;
       -w|--worktree)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a worktree name" >&2; return 2; }
         worktree="$2"; shift 2 ;;
@@ -937,6 +945,7 @@ Usage: clrepo [options] [repo-name|.]
   -r, --remote          also list uncloned remote repos from discovered forge targets
       --refresh         force refresh of remote cache (implies -r)
   -D, --delete          delete a repo (local and/or remote); with <name> or via picker
+      --code            open repo in VS Code instead of Claude Code CLI
   -w, --worktree NAME   pass through to `claude --worktree NAME`
   -V, --version         print version and exit
   --slot N              force a specific slot (1..N)
@@ -968,7 +977,7 @@ EOF
     local git_root=""
     git_root=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)
     if [ -n "$git_root" ] && [ "${git_root#$_CLREPO_BASE/}" != "$git_root" ]; then
-      _clrepo_launch "${git_root#$_CLREPO_BASE/}" "$worktree"
+      _clrepo_launch "${git_root#$_CLREPO_BASE/}" "$worktree" "$editor"
       return
     fi
     if [ "${1:-}" = "." ]; then
@@ -1003,7 +1012,7 @@ EOF
     local sel
     sel=$(printf '%s\n' "$all" | grep -Ei "(^|/)$1$" | head -1)
     if [ -n "$sel" ]; then
-      _clrepo_launch "$sel" "$worktree"
+      _clrepo_launch "$sel" "$worktree" "$editor"
       return
     fi
 
@@ -1023,7 +1032,7 @@ EOF
       if [ "$was_remote" = 1 ]; then
         _clrepo_clone_remote "$hit_path" || return 1
       fi
-      _clrepo_launch "$hit_path" "$worktree"
+      _clrepo_launch "$hit_path" "$worktree" "$editor"
       return
     fi
 
@@ -1040,7 +1049,7 @@ EOF
     if [ "$was_remote" = 1 ]; then
       _clrepo_clone_remote "$hit_path" || return 1
     fi
-    _clrepo_launch "$hit_path" "$worktree"
+    _clrepo_launch "$hit_path" "$worktree" "$editor"
     return
   fi
 
@@ -1087,14 +1096,14 @@ EOF
   if [ "$sel" != "$selraw" ]; then
     _clrepo_clone_remote "$sel" || return
   fi
-  _clrepo_launch "$sel" "$worktree"
+  _clrepo_launch "$sel" "$worktree" "$editor"
 }
 
 _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
-    local flags="-r --remote --refresh -D --delete -w --worktree -V --version -h --help"
+    local flags="-r --remote --refresh -D --delete --code -w --worktree -V --version -h --help"
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
