@@ -109,7 +109,8 @@ _clrepo_fetch_target() {
         [ -z "$tok" ] && exit
         curl -sf -u ":$tok" \
           "https://dev.azure.com/$owner/_apis/git/repositories?api-version=7.1" \
-          | jq -r --arg rel "$rel" '.value[] | "\($rel)/\(.project.name)/\(.name)"' 2>/dev/null
+          | jq -r --arg rel "$rel" \
+              '.value[] | ["\($rel)/\(.project.name)/\(.name)", "", ""] | @tsv' 2>/dev/null
         ;;
     esac
   )
