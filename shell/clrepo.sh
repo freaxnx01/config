@@ -22,11 +22,16 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.0.0"
+_CLREPO_VERSION="1.1.0"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
+_CLREPO_CONFIG="${CLREPO_CONFIG:-$HOME/.config/clrepo}"
 _CLREPO_REMOTE_TTL=600  # seconds
+
+# User config files (all under $_CLREPO_CONFIG, never committed to the repo):
+#   ado-projects  — one ADO project name per line; limits which projects are
+#                   listed/cloned. Empty file or absent = no filter (all projects).
 
 # --- Slot / Telegram channel config ---
 _CLREPO_MAX_SLOTS="${CLREPO_MAX_SLOTS:-6}"
@@ -109,10 +114,23 @@ _clrepo_fetch_target() {
       ado)
         local tok="${AZURE_DEVOPS_EXT_PAT:-${ADO_PAT:-}}"
         [ -z "$tok" ] && exit
+        local _ado_projects_file="$_CLREPO_CONFIG/ado-projects"
+        local _ado_allowed="null"
+        if [ -f "$_ado_projects_file" ]; then
+          _ado_allowed=$(grep -v '^#\|^[[:space:]]*$' "$_ado_projects_file" \
+            | jq -Rsc 'split("\n") | map(select(length > 0))')
+        fi
         curl -sf -u ":$tok" \
           "https://dev.azure.com/$owner/_apis/git/repositories?api-version=7.1" \
-          | jq -r --arg rel "$rel" \
-              '.value[] | ["\($rel)/\(.project.name)/\(.name)", "", ""] | @tsv' 2>/dev/null
+          | jq -r --arg rel "$rel" --argjson allowed "$_ado_allowed" '
+              .value[]
+              | select(
+                  $allowed == null or ($allowed | length == 0) or
+                  (.project.name as $p | $allowed | index($p) != null)
+                )
+              | ["\($rel)/\(.project.name)/\(.name)", "", ""]
+              | @tsv
+            ' 2>/dev/null
         ;;
     esac
   )
