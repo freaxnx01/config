@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.2.1"
+_CLREPO_VERSION="1.2.2"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -1006,11 +1006,12 @@ EOF
     return
   fi
 
-  # Positional shortcut: case-insensitive exact-basename lookup, local-only.
+  # Positional shortcut: case-insensitive basename lookup (exact, then substring).
   # If name misses, fall back to metadata (topics + description) search.
   if [ "$mode_delete" = 0 ] && [ -n "$1" ]; then
     local sel
     sel=$(printf '%s\n' "$all" | grep -Ei "(^|/)$1$" | head -1)
+    [ -z "$sel" ] && sel=$(printf '%s\n' "$all" | grep -Ei "(^|/)[^/]*$1[^/]*$" | head -1)
     if [ -n "$sel" ]; then
       _clrepo_launch "$sel" "$worktree" "$editor"
       return
@@ -1112,7 +1113,7 @@ _clrepo() {
   shopt -s nocasematch
   local name
   while IFS= read -r name; do
-    [[ "$name" == "$cur"* ]] && COMPREPLY+=("$name")
+    [[ "$name" == *"$cur"* ]] && COMPREPLY+=("$name")
   done <<< "$names"
   shopt -u nocasematch
 }
