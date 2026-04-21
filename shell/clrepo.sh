@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.2.0"
+_CLREPO_VERSION="1.2.1"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -931,7 +931,7 @@ clrepo() {
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
       -D|--delete)    mode_delete=1; shift ;;
-      --code)         editor=code; shift ;;
+      -c|--code)      editor=code; shift ;;
       -w|--worktree)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a worktree name" >&2; return 2; }
         worktree="$2"; shift 2 ;;
@@ -945,7 +945,7 @@ Usage: clrepo [options] [repo-name|.]
   -r, --remote          also list uncloned remote repos from discovered forge targets
       --refresh         force refresh of remote cache (implies -r)
   -D, --delete          delete a repo (local and/or remote); with <name> or via picker
-      --code            open repo in VS Code instead of Claude Code CLI
+  -c, --code            open repo in VS Code instead of Claude Code CLI
   -w, --worktree NAME   pass through to `claude --worktree NAME`
   -V, --version         print version and exit
   --slot N              force a specific slot (1..N)
@@ -1103,7 +1103,7 @@ _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
-    local flags="-r --remote --refresh -D --delete --code -w --worktree -V --version -h --help"
+    local flags="-r --remote --refresh -D --delete -c --code -w --worktree -V --version -h --help"
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
