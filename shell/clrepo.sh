@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_BASE="/home/freax/projects/repos"
+_CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
 _CLREPO_REMOTE_TTL=600  # seconds
 
@@ -49,6 +49,8 @@ _clrepo_targets() {
             printf '%s\tgitlab\t%s\t-\n' "$rel" "${rel#gitlab/}" ;;
           git-forgejo)
             printf '%s\tforgejo\tfreax\t-\n' "$rel" ;;
+          ado)
+            printf '%s\tado\tbossinfo\t-\n' "$rel" ;;
         esac
       done
 }
@@ -101,6 +103,13 @@ _clrepo_fetch_target() {
                   ((.topics // []) | join(",")) ]
               | @tsv
             ' 2>/dev/null
+        ;;
+      ado)
+        local tok="${AZURE_DEVOPS_EXT_PAT:-${ADO_PAT:-}}"
+        [ -z "$tok" ] && exit
+        curl -sf -u ":$tok" \
+          "https://dev.azure.com/$owner/_apis/git/repositories?api-version=7.1" \
+          | jq -r --arg rel "$rel" '.value[] | "\($rel)/\(.project.name)/\(.name)"' 2>/dev/null
         ;;
     esac
   )
@@ -225,6 +234,12 @@ _clrepo_clone_url() {
       printf 'https://gitlab.freaxnx01.ch/%s/%s.git\n' "${parent#gitlab/}" "$name" ;;
     git-forgejo)
       printf 'ssh://git@git.home.freaxnx01.ch:222/freax/%s.git\n' "$name" ;;
+    ado/*)
+      local proj="${parent#ado/}"
+      local enc_proj enc_name
+      enc_proj=$(printf '%s' "$proj" | jq -sRr '@uri' | tr -d '\n')
+      enc_name=$(printf '%s' "$name" | jq -sRr '@uri' | tr -d '\n')
+      printf 'https://dev.azure.com/bossinfo/%s/_git/%s\n' "$enc_proj" "$enc_name" ;;
     *) return 1 ;;
   esac
 }
@@ -234,6 +249,7 @@ _clrepo_clone_url() {
 _clrepo_git_clone_in() {
   local target="$1" url="$2" name="$3"
   (
+    mkdir -p "$_CLREPO_BASE/$target" 2>/dev/null
     cd "$_CLREPO_BASE/$target" || exit 1
     command -v direnv >/dev/null && eval "$(direnv export bash 2>/dev/null)"
     case "$target" in
@@ -242,6 +258,13 @@ _clrepo_git_clone_in() {
         local tok="${GH_TOKEN:-$GITHUB_TOKEN}"
         GH_TOKEN="$tok" git \
           -c "credential.https://github.com.helper=!f() { echo username=x-access-token; echo \"password=\$GH_TOKEN\"; }; f" \
+          clone "$url" "$name"
+        ;;
+      ado|ado/*)
+        local tok="${AZURE_DEVOPS_EXT_PAT:-${ADO_PAT:-}}"
+        [ -z "$tok" ] && { echo "clrepo: no ADO_PAT under $target" >&2; exit 1; }
+        git \
+          -c "credential.https://dev.azure.com.helper=!f() { echo username=x; echo \"password=$tok\"; }; f" \
           clone "$url" "$name"
         ;;
       *)
@@ -279,7 +302,13 @@ _clrepo_create_new() {
   forge=$(printf '%s' "$line" | cut -f2)
   vis=$(printf '%s' "$line" | cut -f4)
 
-  echo "clrepo: creating $name on $target..." >&2
+  local ado_proj=""
+  if [ "$forge" = "ado" ]; then
+    read -r -p "ADO project: " ado_proj
+    [ -z "$ado_proj" ] && { echo "aborted"; return 1; }
+  fi
+
+  echo "clrepo: creating $name on $target${ado_proj:+ / $ado_proj}..." >&2
   local url
   url=$(
     cd "$_CLREPO_BASE/$target" || exit
@@ -311,9 +340,29 @@ _clrepo_create_new() {
           -d "$(jq -cn --arg n "$name" '{name:$n,private:true,auto_init:false}')" \
           "https://git.home.freaxnx01.ch/api/v1/user/repos" \
           | jq -r '.ssh_url // empty' ;;
+      ado)
+        local tok="${AZURE_DEVOPS_EXT_PAT:-${ADO_PAT:-}}"
+        [ -z "$tok" ] && { echo "ERR: no ADO_PAT under $target" >&2; exit 1; }
+        local enc_proj
+        enc_proj=$(printf '%s' "$ado_proj" | jq -sRr '@uri' | tr -d '\n')
+        local proj_id
+        proj_id=$(curl -sf -u ":$tok" \
+          "https://dev.azure.com/bossinfo/_apis/projects/$enc_proj?api-version=7.1" \
+          | jq -r '.id // empty')
+        [ -z "$proj_id" ] && { echo "ERR: project $ado_proj not found" >&2; exit 1; }
+        curl -sf -X POST -u ":$tok" \
+          -H "Content-Type: application/json" \
+          -d "$(jq -cn --arg n "$name" --arg pid "$proj_id" '{name:$n,project:{id:$pid}}')" \
+          "https://dev.azure.com/bossinfo/_apis/git/repositories?api-version=7.1" \
+          | jq -r '.remoteUrl // empty' ;;
     esac
   )
   [ -z "$url" ] && { echo "clrepo: remote creation failed"; return 1; }
+
+  if [ "$forge" = "ado" ]; then
+    target="$target/$ado_proj"
+  fi
+
   echo "clrepo: cloning $url" >&2
   _clrepo_git_clone_in "$target" "$url" "$name" || return 1
   rm -f "$_CLREPO_CACHE/remote.list" "$_CLREPO_CACHE/repo-meta.json"
@@ -345,6 +394,8 @@ _clrepo_delete() {
       forge=gitlab; owner="${parent#gitlab/}" ;;
     git-forgejo)
       forge=forgejo; owner=freax ;;
+    ado/*)
+      forge=ado; owner="${parent#ado/}" ;;
     *)
       echo "clrepo: unknown forge for $rel" >&2; return 1 ;;
   esac
@@ -405,6 +456,7 @@ _clrepo_delete() {
         github)  creds_dir="$_CLREPO_BASE/$parent" ;;
         gitlab)  creds_dir="$_CLREPO_BASE/gitlab/$owner" ;;
         forgejo) creds_dir="$_CLREPO_BASE/git-forgejo" ;;
+        ado)     creds_dir="$_CLREPO_BASE/ado" ;;
       esac
       cd "$creds_dir" 2>/dev/null || { echo "ERR: creds dir missing: $creds_dir" >&2; exit 1; }
       command -v direnv >/dev/null && eval "$(direnv export bash 2>/dev/null)"
@@ -441,6 +493,25 @@ _clrepo_delete() {
             -H "Authorization: token $FORGEJO_TOKEN" \
             "https://git.home.freaxnx01.ch/api/v1/repos/$owner/$name" \
             || { echo "ERR: Forgejo DELETE failed" >&2; exit 1; }
+          ;;
+        ado)
+          local tok="${AZURE_DEVOPS_EXT_PAT:-${ADO_PAT:-}}"
+          [ -z "$tok" ] && { echo "ERR: no ADO_PAT" >&2; exit 1; }
+          local enc_proj enc_name
+          enc_proj=$(printf '%s' "$owner" | jq -sRr '@uri' | tr -d '\n')
+          enc_name=$(printf '%s' "$name" | jq -sRr '@uri' | tr -d '\n')
+          local repo_id
+          repo_id=$(curl -sf -u ":$tok" \
+            "https://dev.azure.com/bossinfo/$enc_proj/_apis/git/repositories/$enc_name?api-version=7.1" \
+            | jq -r '.id // empty')
+          [ -z "$repo_id" ] && { echo "ERR: repo lookup failed for $owner/$name" >&2; exit 1; }
+          local http_code
+          http_code=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -u ":$tok" \
+            "https://dev.azure.com/bossinfo/_apis/git/repositories/$repo_id?api-version=7.1")
+          if [ "$http_code" != "204" ]; then
+            echo "ERR: ADO DELETE returned HTTP $http_code" >&2
+            exit 1
+          fi
           ;;
       esac
     ) || return 1
@@ -831,7 +902,9 @@ clrepo() {
         worktree="$2"; shift 2 ;;
       -h|--help)
         cat <<'EOF'
-Usage: clrepo [options] [repo-name]
+Usage: clrepo [options] [repo-name|.]
+  (no args)             launch current repo if CWD is under $CLREPO_BASE, else picker
+  .                     launch current repo (errors if CWD is not inside a known repo)
   -r, --remote          also list uncloned remote repos from discovered forge targets
       --refresh         force refresh of remote cache (implies -r)
   -D, --delete          delete a repo (local and/or remote); with <name> or via picker
@@ -860,8 +933,22 @@ EOF
   local mru="$_CLREPO_CACHE/mru"
   [ -f "$mru" ] || : > "$mru"
 
+  # Launch current repo when invoked with "." or bare from inside a repo.
+  if [ "$mode_delete" = 0 ] && { [ "${1:-}" = "." ] || [ $# -eq 0 ]; }; then
+    local git_root=""
+    git_root=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)
+    if [ -n "$git_root" ] && [ "${git_root#$_CLREPO_BASE/}" != "$git_root" ]; then
+      _clrepo_launch "${git_root#$_CLREPO_BASE/}" "$worktree"
+      return
+    fi
+    if [ "${1:-}" = "." ]; then
+      echo "clrepo: '.' requires current dir to be inside a repo under $_CLREPO_BASE" >&2
+      return 1
+    fi
+  fi
+
   local all
-  all=$(find "$_CLREPO_BASE" -type d -name .git -printf '%h\n' 2>/dev/null | sed "s|^$_CLREPO_BASE/||")
+  all=$(find "$_CLREPO_BASE" -type d -name '_archive' -prune -o -type d -name .git -printf '%h\n' 2>/dev/null | sed "s|^$_CLREPO_BASE/||")
 
   # --delete <name> (non-interactive shortcut): match local repos by basename.
   if [ "$mode_delete" = 1 ] && [ -n "$1" ]; then
@@ -982,7 +1069,7 @@ _clrepo() {
     return
   fi
   local names
-  names=$(find "$_CLREPO_BASE" -type d -name .git -printf '%h\n' 2>/dev/null | xargs -n1 basename)
+  names=$(find "$_CLREPO_BASE" -type d -name '_archive' -prune -o -type d -name .git -printf '%h\n' 2>/dev/null | xargs -n1 basename)
   shopt -s nocasematch
   local name
   while IFS= read -r name; do
