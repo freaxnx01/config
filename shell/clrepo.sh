@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.1.0"
+_CLREPO_VERSION="1.1.1"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -79,8 +79,9 @@ _clrepo_fetch_target() {
           -H "Accept: application/vnd.github+json" \
           "https://api.github.com/user/repos?affiliation=owner&visibility=$vis&per_page=100" \
           | jq -r --arg rel "$rel" --arg o "$owner" '
-              .[]
-              | select(.owner.login == $o)
+              [ .[] | select(.owner.login == $o) ]
+              | sort_by(.name)
+              | .[]
               | [ "\($rel)/\(.name)",
                   ((.description // "") | gsub("[\\t\\n\\r]"; " ")),
                   ((.topics // []) | join(",")) ]
@@ -92,7 +93,8 @@ _clrepo_fetch_target() {
         curl -sf -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
           "https://gitlab.freaxnx01.ch/api/v4/projects?owned=true&per_page=100" \
           | jq -r --arg rel "$rel" '
-              .[]
+              sort_by(.path)
+              | .[]
               | [ "\($rel)/\(.path)",
                   ((.description // "") | gsub("[\\t\\n\\r]"; " ")),
                   ((.topics // []) | join(",")) ]
@@ -104,7 +106,8 @@ _clrepo_fetch_target() {
         curl -sf -H "Authorization: token $FORGEJO_TOKEN" \
           "https://git.home.freaxnx01.ch/api/v1/user/repos?limit=50" \
           | jq -r --arg rel "$rel" '
-              .[]
+              sort_by(.name)
+              | .[]
               | [ "\($rel)/\(.name)",
                   ((.description // "") | gsub("[\\t\\n\\r]"; " ")),
                   ((.topics // []) | join(",")) ]
@@ -123,11 +126,14 @@ _clrepo_fetch_target() {
         curl -sf -u ":$tok" \
           "https://dev.azure.com/$owner/_apis/git/repositories?api-version=7.1" \
           | jq -r --arg rel "$rel" --argjson allowed "$_ado_allowed" '
-              .value[]
-              | select(
-                  $allowed == null or ($allowed | length == 0) or
-                  (.project.name as $p | $allowed | index($p) != null)
-                )
+              [ .value[]
+                | select(
+                    $allowed == null or ($allowed | length == 0) or
+                    (.project.name as $p | $allowed | index($p) != null)
+                  )
+              ]
+              | sort_by([.project.name, .name])
+              | .[]
               | ["\($rel)/\(.project.name)/\(.name)", "", ""]
               | @tsv
             ' 2>/dev/null
