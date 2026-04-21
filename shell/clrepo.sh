@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.2.2"
+_CLREPO_VERSION="1.3.0"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -846,6 +846,9 @@ _clrepo_launch() {
 
   local repo
   repo=$(basename "$sel")
+
+  printf 'clrepo: %s\n' "$PWD" >&2
+  printf 'clrepo: %s\n' "$(git remote get-url origin 2>/dev/null || echo '(no remote)')" >&2
 
   # VS Code mode — open directory, skip slot/Telegram/tmux entirely
   if [ "$editor" = "code" ]; then
