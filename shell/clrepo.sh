@@ -855,6 +855,15 @@ _clrepo_print_last() {
   printf 'clrepo: remote: %s\n' "$(sed -n '2p' "$f")" >&2
 }
 
+# Derive a stable tmux session name from repo basename + optional worktree.
+# Identical for a given (repo, worktree) pair so reattach checks match
+# session creates.
+_clrepo_tmux_session_name() {
+  local s="$1"
+  [ -n "${2:-}" ] && s="$1-$2"
+  printf '%s' "${s//[^A-Za-z0-9_-]/_}"
+}
+
 _clrepo_launch() {
   local sel="$1"
   local worktree="${2:-}"
@@ -912,9 +921,8 @@ _clrepo_launch() {
     local -a claude_args=(-n "$repo")
     [ -n "$worktree" ] && claude_args+=(--worktree "$worktree")
     if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
-      local session="$repo"
-      [ -n "$worktree" ] && session="$repo-$worktree"
-      session="${session//[^A-Za-z0-9_-]/_}"
+      local session
+      session=$(_clrepo_tmux_session_name "$repo" "$worktree")
       tmux new-session -A -s "$session" claude "${claude_args[@]}"
     else
       claude "${claude_args[@]}"
@@ -935,9 +943,8 @@ _clrepo_launch() {
   echo "clrepo: using slot s${_SLOT} (CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR)" >&2
 
   if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
-    local session="$repo"
-    [ -n "$worktree" ] && session="$repo-$worktree"
-    session="${session//[^A-Za-z0-9_-]/_}"
+    local session
+    session=$(_clrepo_tmux_session_name "$repo" "$worktree")
 
     # Reattach if tmux session already exists (no new slot needed)
     if tmux has-session -t "$session" 2>/dev/null; then
