@@ -1024,13 +1024,14 @@ _clrepo_launch() {
 
 
 clrepo() {
-  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT=""
+  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT="" _CLREPO_NO_SYNC=0
   local -a pos=()
   while [ $# -gt 0 ]; do
     case "$1" in
       -r|--remote)    with_remote=1; shift ;;
       --refresh)      with_remote=1; force_refresh=1; shift ;;
       --no-channel)   _CLREPO_NO_CHANNEL=1; shift ;;
+      --no-sync)      _CLREPO_NO_SYNC=1; shift ;;
       --slot)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _CLREPO_FORCED_SLOT="$2"; shift 2 ;;
@@ -1061,6 +1062,7 @@ Usage: clrepo [options] [repo-name|.]
   -V, --version         print version and exit
   --slot N              force a specific slot (1..N)
   --no-channel          legacy mode, no slot allocation, no Telegram
+  --no-sync             skip the upstream fast-forward pull on startup
   --status              show slot status table
   --free N              force-free slot N (escape hatch)
 In picker:
