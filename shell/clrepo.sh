@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.4.0"
+_CLREPO_VERSION="1.5.0"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -1131,13 +1131,25 @@ _clrepo() {
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
-  local names
+  local names name
   names=$(find "$_CLREPO_BASE" -type d -name '_archive' -prune -o -type d -name .git -printf '%h\n' 2>/dev/null | xargs -n1 basename)
   shopt -s nocasematch
-  local name
   while IFS= read -r name; do
     [[ "$name" == *"$cur"* ]] && COMPREPLY+=("$name")
   done <<< "$names"
   shopt -u nocasematch
+
+  # Keyword fallback: when cur is non-empty, also include basenames of repos
+  # whose cached topics/description match (mirrors positional-arg behavior).
+  if [ -n "$cur" ] && [ -f "$_CLREPO_CACHE/repo-meta.json" ]; then
+    local meta_names found c
+    meta_names=$(_clrepo_meta_search "$cur" 2>/dev/null | awk -F'\t' '{print $2}' | awk -F/ '{print $NF}')
+    while IFS= read -r name; do
+      [ -z "$name" ] && continue
+      found=0
+      for c in "${COMPREPLY[@]}"; do [ "$c" = "$name" ] && { found=1; break; }; done
+      [ "$found" = 0 ] && COMPREPLY+=("$name")
+    done <<< "$meta_names"
+  fi
 }
 complete -F _clrepo clrepo
