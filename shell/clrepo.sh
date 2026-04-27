@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.3.2"
+_CLREPO_VERSION="1.4.0"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -52,6 +52,14 @@ _clrepo_targets() {
           github/*/private)
             local o="${rel#github/}"; o="${o%/private}"
             printf '%s\tgithub\t%s\tprivate\n' "$rel" "$o" ;;
+          github/*)
+            # Owner-level .envrc shared across public/private (direnv walks parents).
+            local o="${rel#github/}"
+            [ -d "$_CLREPO_BASE/$rel/public" ] && \
+              printf '%s/public\tgithub\t%s\tpublic\n' "$rel" "$o"
+            [ -d "$_CLREPO_BASE/$rel/private" ] && \
+              printf '%s/private\tgithub\t%s\tprivate\n' "$rel" "$o"
+            ;;
           gitlab/*)
             printf '%s\tgitlab\t%s\t-\n' "$rel" "${rel#gitlab/}" ;;
           git-forgejo)
