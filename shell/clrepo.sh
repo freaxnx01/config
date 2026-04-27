@@ -864,6 +864,51 @@ _clrepo_tmux_session_name() {
   printf '%s' "${s//[^A-Za-z0-9_-]/_}"
 }
 
+# Fast-forward sync of the current branch with its upstream before launch.
+# Args: $1 = repo basename, $2 = optional worktree name.
+# Never fails the launch; every error path returns 0 after a stderr line.
+_clrepo_sync() {
+  local repo="$1" worktree="${2:-}"
+  [ "${_CLREPO_NO_SYNC:-0}" = 1 ] && return 0
+
+  # Skip if we're about to reattach an existing tmux session.
+  if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
+    local session
+    session=$(_clrepo_tmux_session_name "$repo" "$worktree")
+    tmux has-session -t "$session" 2>/dev/null && return 0
+  fi
+
+  local branch upstream
+  branch=$(git symbolic-ref --quiet --short HEAD) || {
+    _clrepo_warn "detached HEAD, skipping sync"; return 0; }
+  upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null) || {
+    _clrepo_warn "no upstream for $branch, skipping sync"; return 0; }
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    _clrepo_warn "dirty working tree, skipping sync"; return 0
+  fi
+
+  timeout 10 git fetch --quiet 2>/dev/null || {
+    _clrepo_warn "fetch failed or timed out, skipping sync"; return 0; }
+
+  local local_sha upstream_sha base
+  local_sha=$(git rev-parse HEAD)
+  upstream_sha=$(git rev-parse '@{u}')
+  [ "$local_sha" = "$upstream_sha" ] && return 0
+
+  base=$(git merge-base HEAD '@{u}')
+  if [ "$base" = "$upstream_sha" ]; then
+    return 0  # local is ahead of upstream — fine, nothing to pull
+  elif [ "$base" = "$local_sha" ]; then
+    git merge --ff-only --quiet '@{u}' || {
+      _clrepo_warn "ff-only merge failed unexpectedly, skipping sync"; return 0; }
+    printf 'clrepo: pulled %s..%s on %s\n' \
+      "$(git rev-parse --short "$local_sha")" \
+      "$(git rev-parse --short "$upstream_sha")" "$branch" >&2
+  else
+    _clrepo_warn "$branch diverged from $upstream, skipping sync"
+  fi
+}
+
 _clrepo_launch() {
   local sel="$1"
   local worktree="${2:-}"
