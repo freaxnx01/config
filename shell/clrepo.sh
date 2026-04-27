@@ -40,6 +40,11 @@ _CLREPO_SLOTS_LOCK="$_CLREPO_CACHE/slots.lock"
 _CLREPO_SLOT_TOKENS="$_CLREPO_CACHE/slot-tokens.json"
 _CLREPO_OWNER="$_CLREPO_CACHE/owner.json"
 
+# Yellow-prefixed warning to stderr. Used by _clrepo_sync skip paths.
+_clrepo_warn() {
+  printf '\033[33mclrepo: %s\033[0m\n' "$*" >&2
+}
+
 # Emit forge targets: TSV of rel_dir\tforge\towner\tvisibility
 _clrepo_targets() {
   find "$_CLREPO_BASE" -type f -name .envrc -printf '%h\n' 2>/dev/null \
