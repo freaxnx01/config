@@ -915,6 +915,7 @@ _clrepo_launch() {
   local editor="${3:-}"
   local mru="$_CLREPO_CACHE/mru"
   cd "$_CLREPO_BASE/$sel" || return
+  _clrepo_sync "$(basename "$sel")" "$worktree"
   { printf '%s
 ' "$sel"; grep -vxF "$sel" "$mru" 2>/dev/null; } | head -10 > "$mru.tmp" && mv "$mru.tmp" "$mru"
 
