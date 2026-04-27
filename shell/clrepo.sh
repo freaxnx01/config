@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.5.0"
+_CLREPO_VERSION="1.6.0"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -873,6 +873,34 @@ _clrepo_launch() {
     return
   fi
 
+  # Copilot mode — run `copilot --yolo`. Honors -w by cd'ing into the matching
+  # git worktree (lookup by basename in `git worktree list`). Skips slot/Telegram
+  # but keeps the tmux SSH wrap so disconnects don't kill the session.
+  if [ "$editor" = "copilot" ]; then
+    if [ -n "$worktree" ]; then
+      local wt_path=""
+      while IFS= read -r p; do
+        [ "$(basename "$p")" = "$worktree" ] && { wt_path="$p"; break; }
+      done < <(git worktree list --porcelain 2>/dev/null | awk '/^worktree / {print $2}')
+      if [ -z "$wt_path" ]; then
+        echo "clrepo: no worktree named '$worktree' under $sel" >&2
+        return 1
+      fi
+      cd "$wt_path" || return 1
+      printf '%s\n%s\n' "$PWD" "$_remote_url" > "$_CLREPO_CACHE/last"
+    fi
+    if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
+      local session="$repo"
+      [ -n "$worktree" ] && session="$repo-$worktree"
+      session="${session//[^A-Za-z0-9_-]/_}"
+      tmux new-session -A -s "$session" copilot --yolo
+    else
+      copilot --yolo
+    fi
+    _clrepo_print_last
+    return
+  fi
+
   # --- Slot allocation (skip with --no-channel or missing setup) ---
   if [ "${_CLREPO_NO_CHANNEL:-0}" = 1 ] || [ ! -f "$_CLREPO_SLOTS_FILE" ]; then
     # Legacy mode — no slot, no Telegram
@@ -955,6 +983,7 @@ clrepo() {
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
       -D|--delete)    mode_delete=1; shift ;;
       -c|--code)      editor=code; shift ;;
+      -p|--copilot)   editor=copilot; shift ;;
       -w|--worktree)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a worktree name" >&2; return 2; }
         worktree="$2"; shift 2 ;;
@@ -969,7 +998,9 @@ Usage: clrepo [options] [repo-name|.]
       --refresh         force refresh of remote cache (implies -r)
   -D, --delete          delete a repo (local and/or remote); with <name> or via picker
   -c, --code            open repo in VS Code instead of Claude Code CLI
+  -p, --copilot         launch `copilot --yolo` instead of Claude Code CLI
   -w, --worktree NAME   pass through to `claude --worktree NAME`
+                        with -p: cd into the matching git worktree first
   -V, --version         print version and exit
   --slot N              force a specific slot (1..N)
   --no-channel          legacy mode, no slot allocation, no Telegram
@@ -1127,7 +1158,7 @@ _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
-    local flags="-r --remote --refresh -D --delete -c --code -w --worktree -V --version -h --help"
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot -w --worktree -V --version -h --help"
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
