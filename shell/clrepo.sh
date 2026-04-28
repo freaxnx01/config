@@ -24,12 +24,17 @@
 
 _CLREPO_VERSION="1.8.1"
 
+_CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
 _CLREPO_CONFIG="${CLREPO_CONFIG:-$HOME/.config/clrepo}"
 _CLREPO_REMOTE_TTL=600  # seconds
 _CLREPO_UPDATE_TTL=86400  # seconds; staleness for latest-version cache
 _CLREPO_RAW_URL="https://raw.githubusercontent.com/freaxnx01/config/main/shell/clrepo.sh"
+
+# Autosync function (opt-in commit & push on session close). Same file is
+# also exec'd from the tmux session-closed hook in script mode.
+[ -f "$_CLREPO_DIR/clrepo-autosync.sh" ] && . "$_CLREPO_DIR/clrepo-autosync.sh"
 
 # User config files (all under $_CLREPO_CONFIG, never committed to the repo):
 #   ado-projects  — one ADO project name per line; limits which projects are
@@ -1004,7 +1009,10 @@ _clrepo_launch() {
     # New tmux session
     _clrepo_telegram_setup "$_SLOT" "$repo" "$worktree" "$_SLOT_TOKEN"
     tmux new-session -d -s "$session"       -e "CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR"       -e "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN"       claude "${claude_args[@]}"
-    tmux set-hook -t "$session" session-closed "run-shell '$HOME/.cache/clrepo/cleanup.sh $_SLOT $_SLOT_TOKEN'"
+    # Record repo path so the session-closed hook can find it for autosync.
+    mkdir -p "$_CLREPO_CACHE/sessions"
+    printf '%s\n' "$PWD" > "$_CLREPO_CACHE/sessions/${session}.path"
+    tmux set-hook -t "$session" session-closed "run-shell '$_CLREPO_DIR/clrepo-autosync.sh $session $_SLOT_TOKEN; $HOME/.cache/clrepo/cleanup.sh $_SLOT $_SLOT_TOKEN'"
 
     local pid
     pid=$(tmux display-message -t "$session" -p '#{pane_pid}' 2>/dev/null || echo 0)
@@ -1018,6 +1026,7 @@ _clrepo_launch() {
     _clrepo_telegram_setup "$_SLOT" "$repo" "$worktree" "$_SLOT_TOKEN"
     _clrepo_slot_record "$_SLOT" "$repo" "$worktree" "$$"
     claude "${claude_args[@]}"
+    command -v _clrepo_autosync >/dev/null && _clrepo_autosync "$PWD" "$_SLOT_TOKEN"
     _clrepo_slot_free "$_SLOT"
     _clrepo_telegram_cleanup "$_SLOT" "$_SLOT_TOKEN"
     _clrepo_print_last
