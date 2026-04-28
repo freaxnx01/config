@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.7.0"
+_CLREPO_VERSION="1.7.1"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -1042,7 +1042,8 @@ EOF
   fi
 
   # Launch current repo when invoked with "." or bare from inside a repo.
-  if [ "$mode_delete" = 0 ] && { [ "${1:-}" = "." ] || [ $# -eq 0 ]; }; then
+  # Skip when -r/--remote/--refresh is set: user explicitly wants the picker.
+  if [ "$mode_delete" = 0 ] && [ "$with_remote" = 0 ] && { [ "${1:-}" = "." ] || [ $# -eq 0 ]; }; then
     local git_root=""
     git_root=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)
     if [ -n "$git_root" ] && [ "${git_root#$_CLREPO_BASE/}" != "$git_root" ]; then
