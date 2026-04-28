@@ -950,9 +950,8 @@ _clrepo_launch() {
       printf '%s\n%s\n' "$PWD" "$_remote_url" > "$_CLREPO_CACHE/last"
     fi
     if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
-      local session="$repo"
-      [ -n "$worktree" ] && session="$repo-$worktree"
-      session="${session//[^A-Za-z0-9_-]/_}"
+      local session
+      session=$(_clrepo_tmux_session_name "$repo" "$worktree")
       tmux new-session -A -s "$session" copilot --yolo
     else
       copilot --yolo
