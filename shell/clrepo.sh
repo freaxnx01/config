@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.6.0"
+_CLREPO_VERSION="1.7.0"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -1025,6 +1025,21 @@ EOF
   mkdir -p "$_CLREPO_CACHE"
   local mru="$_CLREPO_CACHE/mru"
   [ -f "$mru" ] || : > "$mru"
+
+  # Background-warm repo-meta.json so tab-completion keyword search works
+  # without an explicit `-r`/`--refresh` first. Skipped when -r is set (the
+  # picker does it synchronously). flock prevents pile-ups across shells.
+  if [ "$with_remote" = 0 ]; then
+    local _meta="$_CLREPO_CACHE/repo-meta.json" _age
+    _age=$(( $(date +%s) - $(stat -c %Y "$_meta" 2>/dev/null || echo 0) ))
+    if [ ! -f "$_meta" ] || [ "$_age" -gt "$_CLREPO_REMOTE_TTL" ]; then
+      (
+        flock -n 9 || exit 0
+        _clrepo_remote_list 0 >/dev/null 2>&1
+      ) 9>"$_CLREPO_CACHE/meta-warm.lock" </dev/null >/dev/null 2>&1 &
+      disown 2>/dev/null || true
+    fi
+  fi
 
   # Launch current repo when invoked with "." or bare from inside a repo.
   if [ "$mode_delete" = 0 ] && { [ "${1:-}" = "." ] || [ $# -eq 0 ]; }; then
