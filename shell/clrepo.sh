@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.8.1"
+_CLREPO_VERSION="1.8.2"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -615,18 +615,28 @@ _clrepo_slot_allocate() {
   exec {_lock_fd}>"$_CLREPO_SLOTS_LOCK"
   flock "$_lock_fd"
 
-  # Reconcile dead PIDs
+  # Reconcile dead slots (tmux session is source of truth when recorded;
+  # otherwise fall back to PID liveness for foreground-mode records)
   [ -f "$_CLREPO_SLOTS_FILE" ] || echo '{"slots":{}}' > "$_CLREPO_SLOTS_FILE"
   python3 -c "
-import json, os
+import json, os, subprocess
 f = '$_CLREPO_SLOTS_FILE'
 with open(f) as fh: d = json.load(fh)
 changed = False
 for k, v in list(d.get('slots', {}).items()):
-    if v:
-        try: os.kill(int(v.get('pid', 0)), 0)
-        except (ProcessLookupError, ValueError): d['slots'][k] = None; changed = True
-        except PermissionError: pass
+    if not v: continue
+    sess = v.get('session') or ''
+    if sess:
+        alive = subprocess.run(['tmux', 'has-session', '-t', sess],
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL).returncode == 0
+    else:
+        try: os.kill(int(v.get('pid', 0)), 0); alive = True
+        except (ProcessLookupError, ValueError): alive = False
+        except PermissionError: alive = True
+    if not alive:
+        d['slots'][k] = None
+        changed = True
 if changed:
     with open(f, 'w') as fh: json.dump(d, fh, indent=2)
 " 2>/dev/null
@@ -707,9 +717,11 @@ print(d.get('$_SLOT', ''))
   fi
 }
 
-# Record slot as busy in slots.json
+# Record slot as busy in slots.json. $5 is the tmux session name (empty
+# in foreground mode); when set, reconciliation uses it as the liveness
+# signal instead of $pid (which can race or point at a wrapper).
 _clrepo_slot_record() {
-  local slot="$1" repo="$2" worktree="${3:-}" pid="$4"
+  local slot="$1" repo="$2" worktree="${3:-}" pid="$4" session="${5:-}"
   exec {_lock_fd}>"$_CLREPO_SLOTS_LOCK"
   flock "$_lock_fd"
   python3 -c "
@@ -718,7 +730,8 @@ f = '$_CLREPO_SLOTS_FILE'
 with open(f) as fh: d = json.load(fh)
 d.setdefault('slots', {})['$slot'] = {
     'repo': '$repo', 'worktree': '$worktree' or None,
-    'pid': $pid, 'started_at': int(time.time())
+    'pid': $pid, 'started_at': int(time.time()),
+    'session': '$session' or None,
 }
 with open(f, 'w') as fh: json.dump(d, fh, indent=2)
 " 2>/dev/null
@@ -813,16 +826,25 @@ print(d.get('telegram_user_id', ''))
 _clrepo_slot_status() {
   [ -f "$_CLREPO_SLOTS_FILE" ] || { echo "No slots configured. Run setup-claude-channels.sh first." >&2; return 1; }
 
-  # Reconcile PIDs first
+  # Reconcile dead slots (tmux session is source of truth when recorded;
+  # otherwise fall back to PID liveness for foreground-mode records)
   python3 -c "
-import json, os
+import json, os, subprocess
 f = '$_CLREPO_SLOTS_FILE'
 with open(f) as fh: d = json.load(fh)
 for k, v in list(d.get('slots', {}).items()):
-    if v:
-        try: os.kill(int(v.get('pid', 0)), 0)
-        except (ProcessLookupError, ValueError): d['slots'][k] = None
-        except PermissionError: pass
+    if not v: continue
+    sess = v.get('session') or ''
+    if sess:
+        alive = subprocess.run(['tmux', 'has-session', '-t', sess],
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL).returncode == 0
+    else:
+        try: os.kill(int(v.get('pid', 0)), 0); alive = True
+        except (ProcessLookupError, ValueError): alive = False
+        except PermissionError: alive = True
+    if not alive:
+        d['slots'][k] = None
 with open(f, 'w') as fh: json.dump(d, fh, indent=2)
 " 2>/dev/null
 
@@ -1016,7 +1038,7 @@ _clrepo_launch() {
 
     local pid
     pid=$(tmux display-message -t "$session" -p '#{pane_pid}' 2>/dev/null || echo 0)
-    _clrepo_slot_record "$_SLOT" "$repo" "$worktree" "$pid"
+    _clrepo_slot_record "$_SLOT" "$repo" "$worktree" "$pid" "$session"
     tmux attach-session -t "$session"
     _clrepo_print_last
     # On detach: slot stays allocated (claude is still running in tmux).
