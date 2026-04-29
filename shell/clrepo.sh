@@ -22,12 +22,14 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.7.1"
+_CLREPO_VERSION="1.8.0"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
 _CLREPO_CONFIG="${CLREPO_CONFIG:-$HOME/.config/clrepo}"
 _CLREPO_REMOTE_TTL=600  # seconds
+_CLREPO_UPDATE_TTL=86400  # seconds; staleness for latest-version cache
+_CLREPO_RAW_URL="https://raw.githubusercontent.com/freaxnx01/config/main/shell/clrepo.sh"
 
 # User config files (all under $_CLREPO_CONFIG, never committed to the repo):
 #   ado-projects  — one ADO project name per line; limits which projects are
@@ -1022,6 +1024,67 @@ _clrepo_launch() {
   fi
 }
 
+# Return 0 if $1 is a strictly higher semver than $2 (using `sort -V`).
+_clrepo_version_gt() {
+  [ "$1" = "$2" ] && return 1
+  local higher
+  higher=$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)
+  [ "$higher" = "$1" ]
+}
+
+# Background-refresh $_CLREPO_CACHE/latest-version (mtime-gated by TTL),
+# then print a one-line hint if the cached version is newer than local.
+_clrepo_check_latest() {
+  local cache="$_CLREPO_CACHE/latest-version"
+  local age
+  age=$(( $(date +%s) - $(stat -c %Y "$cache" 2>/dev/null || echo 0) ))
+  if [ ! -f "$cache" ] || [ "$age" -gt "$_CLREPO_UPDATE_TTL" ]; then
+    (
+      flock -n 9 || exit 0
+      local v
+      v=$(curl -fsSL --max-time 5 "$_CLREPO_RAW_URL" 2>/dev/null \
+            | grep -m1 '^_CLREPO_VERSION=' \
+            | sed -E 's/^_CLREPO_VERSION="?([^"]+)"?.*/\1/')
+      [ -n "$v" ] && printf '%s\n' "$v" > "$cache"
+    ) 9>"$_CLREPO_CACHE/latest-warm.lock" </dev/null >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+  fi
+  [ -f "$cache" ] || return 0
+  local latest
+  latest=$(cat "$cache" 2>/dev/null)
+  [ -z "$latest" ] && return 0
+  if _clrepo_version_gt "$latest" "$_CLREPO_VERSION"; then
+    echo "clrepo: new version $latest available (you have $_CLREPO_VERSION) — run \`clrepo update\`" >&2
+  fi
+}
+
+# Pull the config repo that hosts clrepo.sh, then re-source the script
+# in the calling shell so the new function bodies take effect immediately.
+_clrepo_update() {
+  local script="${BASH_SOURCE[0]}"
+  if command -v readlink >/dev/null 2>&1; then
+    script=$(readlink -f "$script" 2>/dev/null || echo "$script")
+  fi
+  local root
+  root=$(git -C "$(dirname "$script")" rev-parse --show-toplevel 2>/dev/null) || {
+    echo "clrepo: cannot locate config repo (script: $script)" >&2
+    return 1
+  }
+  echo "clrepo: pulling $root"
+  local old_ver="$_CLREPO_VERSION"
+  if ! git -C "$root" pull --ff-only; then
+    echo "clrepo: git pull failed (resolve manually in $root)" >&2
+    return 1
+  fi
+  # shellcheck disable=SC1090
+  . "$script"
+  printf '%s\n' "$_CLREPO_VERSION" > "$_CLREPO_CACHE/latest-version" 2>/dev/null
+  if [ "$old_ver" = "$_CLREPO_VERSION" ]; then
+    echo "clrepo: already at $_CLREPO_VERSION"
+  else
+    echo "clrepo: updated $old_ver → $_CLREPO_VERSION"
+  fi
+}
 
 clrepo() {
   local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT="" _CLREPO_NO_SYNC=0
@@ -1049,9 +1112,10 @@ clrepo() {
         echo "clrepo $_CLREPO_VERSION"; return 0 ;;
       -h|--help)
         cat <<'EOF'
-Usage: clrepo [options] [repo-name|.]
+Usage: clrepo [options] [repo-name|.|update]
   (no args)             launch current repo if CWD is under $CLREPO_BASE, else picker
   .                     launch current repo (errors if CWD is not inside a known repo)
+  update                git pull the config repo hosting clrepo.sh and re-source it
   -r, --remote          also list uncloned remote repos from discovered forge targets
       --refresh         force refresh of remote cache (implies -r)
   -D, --delete          delete a repo (local and/or remote); with <name> or via picker
@@ -1084,6 +1148,15 @@ EOF
   mkdir -p "$_CLREPO_CACHE"
   local mru="$_CLREPO_CACHE/mru"
   [ -f "$mru" ] || : > "$mru"
+
+  # `clrepo update` — pull the config repo and re-source. Handled before the
+  # update hint and meta-warm so we don't nag the user during an update.
+  if [ "${1:-}" = "update" ]; then
+    _clrepo_update
+    return
+  fi
+
+  _clrepo_check_latest
 
   # Background-warm repo-meta.json so tab-completion keyword search works
   # without an explicit `-r`/`--refresh` first. Skipped when -r is set (the
@@ -1243,6 +1316,8 @@ _clrepo() {
   while IFS= read -r name; do
     [[ "$name" == *"$cur"* ]] && COMPREPLY+=("$name")
   done <<< "$names"
+  # Built-in verb
+  [[ "update" == *"$cur"* ]] && COMPREPLY+=("update")
   shopt -u nocasematch
 
   # Keyword fallback: when cur is non-empty, also include basenames of repos
