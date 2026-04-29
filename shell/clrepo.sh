@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.8.0"
+_CLREPO_VERSION="1.8.1"
 
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
 _CLREPO_CACHE="$HOME/.cache/clrepo"
@@ -1076,8 +1076,15 @@ _clrepo_update() {
     echo "clrepo: git pull failed (resolve manually in $root)" >&2
     return 1
   fi
+  # Disable alias expansion during re-source: an interactive shell may have
+  # `alias clrepo='clrepo ...'`, which bash would expand inline at parse time
+  # and break the `clrepo() {` definition.
+  local _ea=0
+  shopt -q expand_aliases && _ea=1
+  shopt -u expand_aliases
   # shellcheck disable=SC1090
   . "$script"
+  [ "$_ea" = 1 ] && shopt -s expand_aliases
   printf '%s\n' "$_CLREPO_VERSION" > "$_CLREPO_CACHE/latest-version" 2>/dev/null
   if [ "$old_ver" = "$_CLREPO_VERSION" ]; then
     echo "clrepo: already at $_CLREPO_VERSION"
