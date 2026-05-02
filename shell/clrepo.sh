@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.8.2"
+_CLREPO_VERSION="1.8.3"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -991,7 +991,16 @@ _clrepo_launch() {
 
   # --- Slot allocation (skip with --no-channel or missing setup) ---
   if [ "${_CLREPO_NO_CHANNEL:-0}" = 1 ] || [ ! -f "$_CLREPO_SLOTS_FILE" ]; then
-    # Legacy mode — no slot, no Telegram
+    # Legacy mode — no slot, no Telegram, shared CLAUDE_CONFIG_DIR (~/.claude).
+    # Warn so the user notices: legacy sessions don't show in `clrepo --status`.
+    if [ ! -f "$_CLREPO_SLOTS_FILE" ]; then
+      echo "clrepo: WARNING — $_CLREPO_SLOTS_FILE not found, falling back to legacy mode." >&2
+      echo "  This session won't appear in 'clrepo --status' and shares ~/.claude with your shell." >&2
+      echo "  Run setup-claude-channels.sh to enable slot tracking." >&2
+    else
+      echo "clrepo: --no-channel set: legacy mode (no slot, no Telegram, shared ~/.claude)." >&2
+      echo "  This session won't appear in 'clrepo --status'." >&2
+    fi
     local -a claude_args=(-n "$repo")
     [ -n "$worktree" ] && claude_args+=(--worktree "$worktree")
     if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
