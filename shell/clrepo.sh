@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.8.3"
+_CLREPO_VERSION="1.9.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -820,6 +820,63 @@ print(d.get('telegram_user_id', ''))
   curl -sf -X POST "$api/unpinAllChatMessages" \
     -H "Content-Type: application/json" \
     -d "$(printf '{"chat_id":"%s"}' "$owner_id")" >/dev/null 2>&1 || true
+}
+
+# Presence file at $_CLREPO_CACHE/presence holds one of: auto | away | here.
+# Missing or unrecognized → treated as auto.
+_CLREPO_PRESENCE_FILE="$_CLREPO_CACHE/presence"
+
+# Read the current presence mode. Echoes auto|away|here. Default: auto.
+_clrepo_presence_mode() {
+  local m
+  m=$(cat "$_CLREPO_PRESENCE_FILE" 2>/dev/null | tr -d '[:space:]')
+  case "$m" in
+    auto|away|here) printf '%s' "$m" ;;
+    *)              printf 'auto' ;;
+  esac
+}
+
+# Set presence mode. $1 must be auto|away|here. Prints a one-line confirmation.
+_clrepo_presence_set() {
+  local mode="$1"
+  case "$mode" in
+    auto|away|here) ;;
+    *) echo "clrepo: invalid presence mode '$mode' (expected auto|away|here)" >&2; return 2 ;;
+  esac
+  mkdir -p "$_CLREPO_CACHE"
+  printf '%s\n' "$mode" > "$_CLREPO_PRESENCE_FILE"
+  echo "clrepo: presence set to '$mode'"
+}
+
+# Print current presence mode and per-slot effective state.
+_clrepo_presence_show() {
+  local mode
+  mode=$(_clrepo_presence_mode)
+  echo "presence mode: $mode"
+  [ -f "$_CLREPO_SLOTS_FILE" ] || { echo "(no slots configured)"; return; }
+  python3 -c "
+import json, subprocess
+with open('$_CLREPO_SLOTS_FILE') as f: d = json.load(f)
+mode = '$mode'
+for n in sorted(d.get('slots', {}).keys(), key=int):
+    v = d['slots'][n]
+    if not v:
+        print(f's{n}: free')
+        continue
+    sess = v.get('session') or ''
+    if mode == 'away':
+        eff = 'away (forced)'
+    elif mode == 'here':
+        eff = 'present (forced)'
+    elif sess:
+        r = subprocess.run(['tmux','list-clients','-t',sess],
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        n_clients = len([l for l in r.stdout.decode().splitlines() if l.strip()])
+        eff = 'present' if n_clients > 0 else 'away'
+    else:
+        eff = 'unknown (no session recorded)'
+    print(f's{n}: {eff}  (repo={v.get(\"repo\",\"?\")}, session={sess or \"—\"})')
+" 2>/dev/null
 }
 
 # Print slot status table.
