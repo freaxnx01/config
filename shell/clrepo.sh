@@ -1293,6 +1293,15 @@ EOF
     return
   fi
 
+  # Presence sub-commands. Handled here (before the launch path) so they
+  # work from any cwd, regardless of repo membership.
+  case "${1:-}" in
+    away)     _clrepo_presence_set away; return ;;
+    back)     _clrepo_presence_set auto; return ;;
+    here)     _clrepo_presence_set here; return ;;
+    presence) _clrepo_presence_show;     return ;;
+  esac
+
   _clrepo_check_latest
 
   # Background-warm repo-meta.json so tab-completion keyword search works
