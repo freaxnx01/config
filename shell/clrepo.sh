@@ -720,9 +720,10 @@ print(d.get('$_SLOT', ''))
     echo "  Run setup-claude-channels.sh or add slot $_SLOT to slot-tokens.json." >&2
   fi
 
-  # Wire presence-aware Telegram pages: install per-slot hooks and start the watcher.
+  # Wire presence-aware Telegram pages: install per-slot hooks. The watcher
+  # is started in _clrepo_slot_record (after slots.json is updated) to avoid
+  # racing with the watcher's "no active slots → self-exit" path.
   _clrepo_install_hooks "$_SLOT"
-  _clrepo_watcher_start
 }
 
 # Record slot as busy in slots.json. $5 is the tmux session name (empty
@@ -744,6 +745,10 @@ d.setdefault('slots', {})['$slot'] = {
 with open(f, 'w') as fh: json.dump(d, fh, indent=2)
 " 2>/dev/null
   flock -u "$_lock_fd"
+
+  # Start the usage-limit watcher AFTER slots.json is updated so its first
+  # poll sees this new slot (otherwise it self-exits during Telegram setup).
+  _clrepo_watcher_start
 }
 
 # Free a slot in slots.json
