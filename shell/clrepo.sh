@@ -902,7 +902,9 @@ except Exception:
 " 2>/dev/null)
       # No recorded session → assume away (page); we'd rather notify than miss
       [ -z "$sess" ] && return 0
-      # Count attached clients
+      # Dead session → page (slots.json wasn't reconciled yet)
+      tmux has-session -t "$sess" 2>/dev/null || return 0
+      # Live session — count attached clients
       local n
       n=$(tmux list-clients -t "$sess" 2>/dev/null | wc -l)
       [ "$n" -eq 0 ] && return 0 || return 1
