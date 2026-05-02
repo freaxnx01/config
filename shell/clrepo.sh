@@ -879,6 +879,37 @@ for n in sorted(d.get('slots', {}).keys(), key=int):
 " 2>/dev/null
 }
 
+# Decide whether slot $1 should send a Telegram page right now.
+# Returns 0 (page) or 1 (silent).
+_clrepo_should_page() {
+  local slot="$1"
+  local mode
+  mode=$(_clrepo_presence_mode)
+  case "$mode" in
+    away) return 0 ;;
+    here) return 1 ;;
+    auto)
+      # Look up the slot's tmux session name from slots.json
+      local sess
+      sess=$(python3 -c "
+import json
+try:
+    with open('$_CLREPO_SLOTS_FILE') as f: d = json.load(f)
+    v = d.get('slots', {}).get('$slot')
+    print((v or {}).get('session') or '')
+except Exception:
+    pass
+" 2>/dev/null)
+      # No recorded session → assume away (page); we'd rather notify than miss
+      [ -z "$sess" ] && return 0
+      # Count attached clients
+      local n
+      n=$(tmux list-clients -t "$sess" 2>/dev/null | wc -l)
+      [ "$n" -eq 0 ] && return 0 || return 1
+      ;;
+  esac
+}
+
 # Print slot status table.
 _clrepo_slot_status() {
   [ -f "$_CLREPO_SLOTS_FILE" ] || { echo "No slots configured. Run setup-claude-channels.sh first." >&2; return 1; }
