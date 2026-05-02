@@ -964,7 +964,7 @@ _clrepo_install_hooks() {
   [ -x "$notify" ] || chmod +x "$notify" 2>/dev/null
   [ -x "$clear" ]  || chmod +x "$clear"  2>/dev/null
 
-  mkdir -p "$cfg_dir"
+  mkdir -p "$cfg_dir" "$_CLREPO_CACHE"
   exec {_lock_fd}>"$_CLREPO_CACHE/hooks.lock"
   flock "$_lock_fd"
   python3 -c "
