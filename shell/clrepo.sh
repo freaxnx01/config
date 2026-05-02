@@ -912,6 +912,44 @@ except Exception:
   esac
 }
 
+# Send arbitrary text via slot $1's bot to the configured owner.
+# Args: $1 = slot, $2 = message text. Best-effort; never fails the caller.
+# Reads the slot bot token from Passbolt via slot-tokens.json, owner from owner.json.
+_clrepo_telegram_page() {
+  local slot="$1" text="$2"
+  [ -z "$slot" ] && return 0
+  [ -z "$text" ] && return 0
+
+  local pb_id token owner_id
+  pb_id=$(python3 -c "
+import json
+try:
+    with open('$_CLREPO_SLOT_TOKENS') as f: d = json.load(f)
+    print(d.get('$slot', ''))
+except Exception:
+    pass
+" 2>/dev/null)
+  [ -z "$pb_id" ] && return 0
+
+  token=$(passbolt get resource --id "$pb_id" 2>/dev/null | awk -F": " '/^Password:/ {print $2}')
+  [ -z "$token" ] && return 0
+
+  owner_id=$(python3 -c "
+import json
+try:
+    with open('$_CLREPO_OWNER') as f: d = json.load(f)
+    print(d.get('telegram_user_id', ''))
+except Exception:
+    pass
+" 2>/dev/null)
+  [ -z "$owner_id" ] && return 0
+
+  curl -sf -X POST "https://api.telegram.org/bot${token}/sendMessage" \
+    -H "Content-Type: application/json" \
+    -d "$(python3 -c "import json,sys; print(json.dumps({'chat_id': '$owner_id', 'text': sys.stdin.read()}))" <<< "$text")" \
+    >/dev/null 2>&1 || true
+}
+
 # Print slot status table.
 _clrepo_slot_status() {
   [ -f "$_CLREPO_SLOTS_FILE" ] || { echo "No slots configured. Run setup-claude-channels.sh first." >&2; return 1; }
