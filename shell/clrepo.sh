@@ -829,7 +829,7 @@ print(d.get('telegram_user_id', ''))
 # Read the current presence mode. Echoes auto|away|here. Default: auto.
 _clrepo_presence_mode() {
   local m
-  m=$(tr -d '[:space:]' < "$_CLREPO_PRESENCE_FILE" 2>/dev/null)
+  m=$({ tr -d '[:space:]' < "$_CLREPO_PRESENCE_FILE"; } 2>/dev/null)
   case "$m" in
     auto|away|here) printf '%s' "$m" ;;
     *)              printf 'auto' ;;
