@@ -1003,6 +1003,20 @@ with open(cfg, 'w') as f: json.dump(d, f, indent=2)
   flock -u "$_lock_fd"
 }
 
+# Start the usage-limit watcher daemon if not already running. Idempotent.
+_clrepo_watcher_start() {
+  local pid_file="$_CLREPO_CACHE/watcher.pid"
+  if [ -f "$pid_file" ]; then
+    if kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+      return 0  # already running
+    fi
+  fi
+  local watcher="$_CLREPO_DIR/clrepo-watcher.sh"
+  [ -x "$watcher" ] || chmod +x "$watcher" 2>/dev/null
+  ( setsid "$watcher" </dev/null >/dev/null 2>&1 & ) 2>/dev/null
+  return 0
+}
+
 # Print slot status table.
 _clrepo_slot_status() {
   [ -f "$_CLREPO_SLOTS_FILE" ] || { echo "No slots configured. Run setup-claude-channels.sh first." >&2; return 1; }
