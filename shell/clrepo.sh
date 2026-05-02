@@ -950,6 +950,59 @@ except Exception:
     >/dev/null 2>&1 || true
 }
 
+# Idempotently merge the Notification + UserPromptSubmit hooks into slot $1's
+# settings.json (~/.claude-s<N>/settings.json). The hook commands include the
+# slot number as a positional arg so the hook scripts know which slot fired.
+_clrepo_install_hooks() {
+  local slot="$1"
+  [ -z "$slot" ] && return 1
+  local cfg_dir="$HOME/.claude-s${slot}"
+  local cfg="$cfg_dir/settings.json"
+  local notify="$_CLREPO_DIR/clrepo-hooks/notify.sh"
+  local clear="$_CLREPO_DIR/clrepo-hooks/clear-idle.sh"
+
+  [ -x "$notify" ] || chmod +x "$notify" 2>/dev/null
+  [ -x "$clear" ]  || chmod +x "$clear"  2>/dev/null
+
+  mkdir -p "$cfg_dir"
+  exec {_lock_fd}>"$_CLREPO_CACHE/hooks.lock"
+  flock "$_lock_fd"
+  python3 -c "
+import json, os
+cfg = '$cfg'
+notify_cmd = '$notify $slot'
+clear_cmd  = '$clear $slot'
+
+try:
+    with open(cfg) as f: d = json.load(f)
+except FileNotFoundError:
+    d = {}
+except json.JSONDecodeError:
+    # Corrupt — back up and start fresh
+    os.rename(cfg, cfg + '.corrupt')
+    d = {}
+
+hooks = d.setdefault('hooks', {})
+
+def has_cmd(entries, cmd):
+    for e in entries or []:
+        for h in e.get('hooks', []) or []:
+            if h.get('command') == cmd: return True
+    return False
+
+def add_cmd(key, cmd):
+    entries = hooks.setdefault(key, [])
+    if has_cmd(entries, cmd): return
+    entries.append({'matcher': '', 'hooks': [{'type': 'command', 'command': cmd}]})
+
+add_cmd('Notification',      notify_cmd)
+add_cmd('UserPromptSubmit',  clear_cmd)
+
+with open(cfg, 'w') as f: json.dump(d, f, indent=2)
+" 2>/dev/null
+  flock -u "$_lock_fd"
+}
+
 # Print slot status table.
 _clrepo_slot_status() {
   [ -f "$_CLREPO_SLOTS_FILE" ] || { echo "No slots configured. Run setup-claude-channels.sh first." >&2; return 1; }
