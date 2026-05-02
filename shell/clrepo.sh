@@ -47,6 +47,10 @@ _CLREPO_SLOTS_LOCK="$_CLREPO_CACHE/slots.lock"
 _CLREPO_SLOT_TOKENS="$_CLREPO_CACHE/slot-tokens.json"
 _CLREPO_OWNER="$_CLREPO_CACHE/owner.json"
 
+# Presence file at $_CLREPO_CACHE/presence holds one of: auto | away | here.
+# Missing or unrecognized → treated as auto.
+_CLREPO_PRESENCE_FILE="$_CLREPO_CACHE/presence"
+
 # Yellow-prefixed warning to stderr. Used by _clrepo_sync skip paths.
 _clrepo_warn() {
   printf '\033[33mclrepo: %s\033[0m\n' "$*" >&2
@@ -822,14 +826,10 @@ print(d.get('telegram_user_id', ''))
     -d "$(printf '{"chat_id":"%s"}' "$owner_id")" >/dev/null 2>&1 || true
 }
 
-# Presence file at $_CLREPO_CACHE/presence holds one of: auto | away | here.
-# Missing or unrecognized → treated as auto.
-_CLREPO_PRESENCE_FILE="$_CLREPO_CACHE/presence"
-
 # Read the current presence mode. Echoes auto|away|here. Default: auto.
 _clrepo_presence_mode() {
   local m
-  m=$(cat "$_CLREPO_PRESENCE_FILE" 2>/dev/null | tr -d '[:space:]')
+  m=$(tr -d '[:space:]' < "$_CLREPO_PRESENCE_FILE" 2>/dev/null)
   case "$m" in
     auto|away|here) printf '%s' "$m" ;;
     *)              printf 'auto' ;;
