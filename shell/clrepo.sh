@@ -1362,10 +1362,14 @@ clrepo() {
         echo "clrepo $_CLREPO_VERSION"; return 0 ;;
       -h|--help)
         cat <<'EOF'
-Usage: clrepo [options] [repo-name|.|update]
+Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   (no args)             launch current repo if CWD is under $CLREPO_BASE, else picker
   .                     launch current repo (errors if CWD is not inside a known repo)
   update                git pull the config repo hosting clrepo.sh and re-source it
+  away                  set presence to "away" (Telegram pages enabled for all slots)
+  back                  resume auto-detection (per-slot tmux client check)
+  here                  set presence to "here" (Telegram pages disabled for all slots)
+  presence              show current presence mode and per-slot effective state
   -r, --remote          also list uncloned remote repos from discovered forge targets
       --refresh         force refresh of remote cache (implies -r)
   -D, --delete          delete a repo (local and/or remote); with <name> or via picker
@@ -1575,8 +1579,10 @@ _clrepo() {
   while IFS= read -r name; do
     [[ "$name" == *"$cur"* ]] && COMPREPLY+=("$name")
   done <<< "$names"
-  # Built-in verb
-  [[ "update" == *"$cur"* ]] && COMPREPLY+=("update")
+  # Built-in verbs
+  for verb in update away back here presence; do
+    [[ "$verb" == *"$cur"* ]] && COMPREPLY+=("$verb")
+  done
   shopt -u nocasematch
 
   # Keyword fallback: when cur is non-empty, also include basenames of repos

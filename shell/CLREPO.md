@@ -46,6 +46,10 @@ clrepo --refresh                # force-refresh remote cache, then pick
 clrepo -D <name>                # non-interactive delete (local repos only)
 clrepo <name> -w <worktree>     # pass --worktree to claude
 clrepo --help                   # usage
+clrepo away                     # presence: force "away" (enable Telegram pages for all slots)
+clrepo back                     # presence: resume auto-detection (per-slot tmux client check)
+clrepo here                     # presence: force "here" (suppress Telegram pages for all slots)
+clrepo presence                 # show current presence mode + per-slot effective state
 ```
 
 ## Picker keybindings
@@ -125,6 +129,27 @@ The slot/telegram spec (separate document) replaces `_clrepo_launch()` to add:
 - Exit hooks for cleanup
 
 Everything upstream of `_clrepo_launch` (picker, clone, create, delete, MRU, worktree parsing) is untouched. The worktree name arrives as `$2` of `_clrepo_launch`.
+
+## Presence-aware Telegram pages
+
+clrepo proactively pages each slot's Telegram bot when Claude is paused or
+hits the 5h usage limit, but only when the user is **away** from the slot's
+tmux session. See spec at `docs/superpowers/specs/2026-05-02-clrepo-presence-aware-telegram-pages-design.md`.
+
+### Presence model
+
+| `~/.cache/clrepo/presence` | Effective state |
+|---|---|
+| missing or `auto` | per-slot: present iff the slot's tmux session has ≥1 attached client |
+| `away` | always away (forced — pages always sent) |
+| `here` | always present (forced — pages suppressed) |
+
+### Event sources
+
+- **Notification hook** (per-slot `~/.claude-s<N>/settings.json`): `idle_prompt` (debounced 120s) and `elicitation_dialog` (immediate) trigger a page via `shell/clrepo-hooks/notify.sh`. `UserPromptSubmit` fires `shell/clrepo-hooks/clear-idle.sh` to cancel a pending idle page.
+- **Watcher daemon** (`shell/clrepo-watcher.sh`): polls every 30s for the usage-limit phrase in each active slot's tmux pane. Started by `_clrepo_slot_allocate`, self-exits when no slots are occupied.
+
+Both event sources gate through `_clrepo_should_page` before sending. Pages go to the slot's existing per-slot bot (`@claude_freax_s<N>_bot`); replies route back via the existing `--channels plugin:telegram@...` mechanism.
 
 ## Config variables
 
