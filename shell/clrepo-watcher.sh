@@ -4,7 +4,12 @@
 # Polls each occupied slot's tmux pane every POLL_SEC for the usage-limit
 # phrase. On match (and gate-permitting), sends a Telegram page via the
 # slot's bot. Self-exits when no slots are occupied for two consecutive
-# polls (60s grace).
+# polls (~30s grace, one POLL_SEC interval).
+#
+# Note: when spawned via _clrepo_watcher_start, stderr is redirected to
+# /dev/null. A failure to source clrepo.sh therefore exits silently without
+# writing the PID file. Check the absence of watcher.pid + the source
+# command path if the daemon appears to vanish at startup.
 
 set -u
 
@@ -44,6 +49,7 @@ echo $$ > "$PID_FILE"
 trap 'rm -f "$PID_FILE"; log "watcher exiting"' EXIT
 
 log "watcher starting (pid $$)"
+mkdir -p "$CACHE/sessions"
 
 empty_polls=0
 
