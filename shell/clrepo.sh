@@ -759,6 +759,10 @@ d.setdefault('slots', {})['$slot'] = None
 with open(f, 'w') as fh: json.dump(d, fh, indent=2)
 " 2>/dev/null
   flock -u "$_lock_fd"
+
+  # Clean up presence-page markers for this slot
+  rm -f "$_CLREPO_CACHE/sessions/${slot}.idle-since" \
+        "$_CLREPO_CACHE/sessions/${slot}.limit-paged" 2>/dev/null
 }
 
 # Call Telegram API to set bot name and pin a banner message.
