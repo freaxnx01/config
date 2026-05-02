@@ -719,6 +719,10 @@ print(d.get('$_SLOT', ''))
     echo "clrepo: WARNING — no bot token for slot $_SLOT. Telegram channel will not work." >&2
     echo "  Run setup-claude-channels.sh or add slot $_SLOT to slot-tokens.json." >&2
   fi
+
+  # Wire presence-aware Telegram pages: install per-slot hooks and start the watcher.
+  _clrepo_install_hooks "$_SLOT"
+  _clrepo_watcher_start
 }
 
 # Record slot as busy in slots.json. $5 is the tmux session name (empty
