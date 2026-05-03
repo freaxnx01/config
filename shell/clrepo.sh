@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.13.2"
+_CLREPO_VERSION="1.13.3"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1261,6 +1261,11 @@ _clrepo_launch() {
     # New tmux session
     _clrepo_telegram_setup "$_SLOT" "$repo" "$worktree" "$_SLOT_TOKEN"
     tmux new-session -d -s "$session"       -e "CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR"       -e "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN"       claude "${claude_args[@]}"
+    # Keep the pane visible on non-zero exit so the user actually sees claude's
+    # startup error on attach instead of just `[exited]`. Auto-close on exit 0
+    # so the success path stays clean (no dangling pane to dismiss).
+    tmux set-option -t "$session" remain-on-exit on
+    tmux set-hook   -t "$session" pane-died       "if-shell -F '#{==:#{pane_dead_status},0}' 'kill-pane'"
     # Record repo path so the session-closed hook can find it for autosync.
     mkdir -p "$_CLREPO_CACHE/sessions"
     printf '%s\n' "$PWD" > "$_CLREPO_CACHE/sessions/${session}.path"
@@ -1270,6 +1275,21 @@ _clrepo_launch() {
     pid=$(tmux display-message -t "$session" -p '#{pane_pid}' 2>/dev/null || echo 0)
     _clrepo_slot_record "$_SLOT" "$repo" "$worktree" "$pid" "$session"
     tmux attach-session -t "$session"
+
+    # Failure path: claude exited non-zero, pane stayed (via remain-on-exit)
+    # so the user could read the error. After they detach, reap the lingering
+    # session, tell them clrepo registered the failure, and skip print_last
+    # (the path/remote on disk is for a session that never really started).
+    if tmux has-session -t "$session" 2>/dev/null; then
+      local _live
+      _live=$(tmux list-panes -t "$session" -F '#{pane_dead}' 2>/dev/null | grep -c '^0$')
+      if [ "$_live" = "0" ]; then
+        tmux kill-session -t "$session" 2>/dev/null
+        echo "clrepo: claude exited unexpectedly — see error above" >&2
+        return 1
+      fi
+    fi
+
     _clrepo_print_last
     # On detach: slot stays allocated (claude is still running in tmux).
     # PID reconciliation will free it when claude actually exits.
