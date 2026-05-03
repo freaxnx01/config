@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.10.0"
+_CLREPO_VERSION="1.11.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1150,7 +1150,7 @@ _clrepo_launch() {
   local sel="$1"
   local worktree="${2:-}"
   local editor="${3:-}"
-  local remote_control="${4:-0}"
+  local remote_control="${4:-1}"
   local mru="$_CLREPO_CACHE/mru"
   cd "$_CLREPO_BASE/$sel" || return
   _clrepo_sync "$(basename "$sel")" "$worktree"
@@ -1345,7 +1345,7 @@ _clrepo_update() {
 }
 
 clrepo() {
-  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" remote_control=0 _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT="" _CLREPO_NO_SYNC=0
+  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" remote_control=1 _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT="" _CLREPO_NO_SYNC=0
   local -a pos=()
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -1364,6 +1364,7 @@ clrepo() {
       -c|--code)      editor=code; shift ;;
       -p|--copilot)   editor=copilot; shift ;;
       --remote-control|--rc) remote_control=1; shift ;;
+      --no-remote-control|--no-rc) remote_control=0; shift ;;
       -w|--worktree)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a worktree name" >&2; return 2; }
         worktree="$2"; shift 2 ;;
@@ -1386,8 +1387,10 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   -p, --copilot         launch `copilot --yolo` instead of Claude Code CLI
       --remote-control, --rc
                         pass `--remote-control` to claude (steer session from
-                        claude.ai/code or mobile app); requires claude.ai OAuth
-                        login. Incompatible with -c and -p.
+                        claude.ai/code or mobile app); on by default, requires
+                        claude.ai OAuth login. Ignored with -c and -p.
+      --no-remote-control, --no-rc
+                        opt out of `--remote-control` for this launch.
   -w, --worktree NAME   pass through to `claude --worktree NAME`
                         with -p: cd into the matching git worktree first
   -V, --version         print version and exit
@@ -1411,11 +1414,6 @@ EOF
     esac
   done
   set -- "${pos[@]}"
-
-  if [ "$remote_control" = 1 ] && [ -n "$editor" ]; then
-    echo "clrepo: --remote-control is incompatible with -c/--code and -p/--copilot" >&2
-    return 2
-  fi
 
   mkdir -p "$_CLREPO_CACHE"
   local mru="$_CLREPO_CACHE/mru"
