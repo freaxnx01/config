@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.12.0"
+_CLREPO_VERSION="1.13.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -724,10 +724,16 @@ print(d.get('$_SLOT', ''))
   flock -u "$_lock_fd"
 
   # Telegram is opt-in: only warn if slot-tokens.json exists but is missing
-  # this slot. With no slot-tokens.json at all, Telegram pages silently no-op.
-  if [ -z "$_SLOT_TOKEN" ] && [ -f "$_CLREPO_SLOT_TOKENS" ]; then
-    echo "clrepo: no bot token for slot $_SLOT — Telegram channel disabled for this session." >&2
-    echo "  Add slot $_SLOT to $_CLREPO_SLOT_TOKENS to enable." >&2
+  # this slot. With no slot-tokens.json at all, surface a one-time hint
+  # pointing to the setup script (gated by a sentinel file).
+  if [ -z "$_SLOT_TOKEN" ]; then
+    if [ -f "$_CLREPO_SLOT_TOKENS" ]; then
+      echo "clrepo: no bot token for slot $_SLOT — Telegram channel disabled for this session." >&2
+      echo "  Add slot $_SLOT to $_CLREPO_SLOT_TOKENS to enable." >&2
+    elif [ ! -f "$_CLREPO_CACHE/.channels-hinted" ]; then
+      echo "clrepo: tip — Telegram pages not configured. Run $_CLREPO_DIR/setup-claude-channels.sh to enable." >&2
+      touch "$_CLREPO_CACHE/.channels-hinted" 2>/dev/null
+    fi
   fi
 
   # Wire presence-aware Telegram pages: install per-slot hooks. The watcher
