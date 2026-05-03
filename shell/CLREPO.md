@@ -106,7 +106,16 @@ All forge API calls (list, create, delete, clone-auth) use **per-dir PATs loaded
 3. Use the exported `GH_TOKEN` / `GITLAB_TOKEN` / `FORGEJO_TOKEN` for curl/git
 
 GitHub clone uses an inline `credential.helper` injected via `git -c` (no SSH key for GitHub).
-Forgejo clone uses SSH on port 222 (`~/.ssh/id_ed25519_forgejo`).
+Forgejo clone uses SSH (port 222); clrepo runs plain `git clone` and relies on your `~/.ssh/config`. Typical host stanza:
+
+```
+Host git.home.freaxnx01.ch
+  Port 222
+  User git
+  IdentityFile ~/.ssh/id_ed25519_forgejo
+  IdentitiesOnly yes
+```
+
 GitLab clone uses HTTPS via the `GIT_CONFIG_*` credential helper wired in its `.envrc`.
 
 GitHub delete requires `delete_repo` scope on the per-dir PAT (edit at https://github.com/settings/tokens, same token string).
