@@ -45,6 +45,7 @@ clrepo -r                       # picker + streaming remote listings from all fo
 clrepo --refresh                # force-refresh remote cache, then pick
 clrepo -D <name>                # non-interactive delete (local repos only)
 clrepo <name> -w <worktree>     # pass --worktree to claude
+clrepo <name> --remote-control  # pass --remote-control to claude (alias --rc)
 clrepo --help                   # usage
 clrepo away                     # presence: force "away" (enable Telegram pages for all slots)
 clrepo back                     # presence: resume auto-detection (per-slot tmux client check)

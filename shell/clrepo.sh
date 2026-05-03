@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.9.0"
+_CLREPO_VERSION="1.10.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1150,6 +1150,7 @@ _clrepo_launch() {
   local sel="$1"
   local worktree="${2:-}"
   local editor="${3:-}"
+  local remote_control="${4:-0}"
   local mru="$_CLREPO_CACHE/mru"
   cd "$_CLREPO_BASE/$sel" || return
   _clrepo_sync "$(basename "$sel")" "$worktree"
@@ -1211,6 +1212,7 @@ _clrepo_launch() {
     fi
     local -a claude_args=(-n "$repo")
     [ -n "$worktree" ] && claude_args+=(--worktree "$worktree")
+    [ "$remote_control" = 1 ] && claude_args+=(--remote-control)
     if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
       local session
       session=$(_clrepo_tmux_session_name "$repo" "$worktree")
@@ -1227,6 +1229,7 @@ _clrepo_launch() {
 
   local -a claude_args=(-n "$repo" --dangerously-skip-permissions --channels plugin:telegram@claude-plugins-official)
   [ -n "$worktree" ] && claude_args+=(--worktree "$worktree")
+  [ "$remote_control" = 1 ] && claude_args+=(--remote-control)
 
   export CLAUDE_CONFIG_DIR="$HOME/.claude-s${_SLOT}"
   export TELEGRAM_BOT_TOKEN="$_SLOT_TOKEN"
@@ -1342,7 +1345,7 @@ _clrepo_update() {
 }
 
 clrepo() {
-  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT="" _CLREPO_NO_SYNC=0
+  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" remote_control=0 _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT="" _CLREPO_NO_SYNC=0
   local -a pos=()
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -1360,6 +1363,7 @@ clrepo() {
       -D|--delete)    mode_delete=1; shift ;;
       -c|--code)      editor=code; shift ;;
       -p|--copilot)   editor=copilot; shift ;;
+      --remote-control|--rc) remote_control=1; shift ;;
       -w|--worktree)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a worktree name" >&2; return 2; }
         worktree="$2"; shift 2 ;;
@@ -1380,6 +1384,10 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   -D, --delete          delete a repo (local and/or remote); with <name> or via picker
   -c, --code            open repo in VS Code instead of Claude Code CLI
   -p, --copilot         launch `copilot --yolo` instead of Claude Code CLI
+      --remote-control, --rc
+                        pass `--remote-control` to claude (steer session from
+                        claude.ai/code or mobile app); requires claude.ai OAuth
+                        login. Incompatible with -c and -p.
   -w, --worktree NAME   pass through to `claude --worktree NAME`
                         with -p: cd into the matching git worktree first
   -V, --version         print version and exit
@@ -1403,6 +1411,11 @@ EOF
     esac
   done
   set -- "${pos[@]}"
+
+  if [ "$remote_control" = 1 ] && [ -n "$editor" ]; then
+    echo "clrepo: --remote-control is incompatible with -c/--code and -p/--copilot" >&2
+    return 2
+  fi
 
   mkdir -p "$_CLREPO_CACHE"
   local mru="$_CLREPO_CACHE/mru"
@@ -1447,7 +1460,7 @@ EOF
     local git_root=""
     git_root=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)
     if [ -n "$git_root" ] && [ "${git_root#$_CLREPO_BASE/}" != "$git_root" ]; then
-      _clrepo_launch "${git_root#$_CLREPO_BASE/}" "$worktree" "$editor"
+      _clrepo_launch "${git_root#$_CLREPO_BASE/}" "$worktree" "$editor" "$remote_control"
       return
     fi
     if [ "${1:-}" = "." ]; then
@@ -1483,7 +1496,7 @@ EOF
     sel=$(printf '%s\n' "$all" | grep -Ei "(^|/)$1$" | head -1)
     [ -z "$sel" ] && sel=$(printf '%s\n' "$all" | grep -Ei "(^|/)[^/]*$1[^/]*$" | head -1)
     if [ -n "$sel" ]; then
-      _clrepo_launch "$sel" "$worktree" "$editor"
+      _clrepo_launch "$sel" "$worktree" "$editor" "$remote_control"
       return
     fi
 
@@ -1503,7 +1516,7 @@ EOF
       if [ "$was_remote" = 1 ]; then
         _clrepo_clone_remote "$hit_path" || return 1
       fi
-      _clrepo_launch "$hit_path" "$worktree" "$editor"
+      _clrepo_launch "$hit_path" "$worktree" "$editor" "$remote_control"
       return
     fi
 
@@ -1520,7 +1533,7 @@ EOF
     if [ "$was_remote" = 1 ]; then
       _clrepo_clone_remote "$hit_path" || return 1
     fi
-    _clrepo_launch "$hit_path" "$worktree" "$editor"
+    _clrepo_launch "$hit_path" "$worktree" "$editor" "$remote_control"
     return
   fi
 
@@ -1567,14 +1580,14 @@ EOF
   if [ "$sel" != "$selraw" ]; then
     _clrepo_clone_remote "$sel" || return
   fi
-  _clrepo_launch "$sel" "$worktree" "$editor"
+  _clrepo_launch "$sel" "$worktree" "$editor" "$remote_control"
 }
 
 _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot -w --worktree --no-sync --no-channel --slot --status --free -V --version -h --help"
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --free -V --version -h --help"
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
