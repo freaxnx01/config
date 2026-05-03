@@ -22,11 +22,11 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.13.1"
+_CLREPO_VERSION="1.13.2"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
-_CLREPO_CACHE="$HOME/.cache/clrepo"
+_CLREPO_CACHE="${CLREPO_CACHE:-$HOME/.cache/clrepo}"
 _CLREPO_CONFIG="${CLREPO_CONFIG:-$HOME/.config/clrepo}"
 _CLREPO_REMOTE_TTL=600  # seconds
 _CLREPO_UPDATE_TTL=86400  # seconds; staleness for latest-version cache
