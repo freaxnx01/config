@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.11.1"
+_CLREPO_VERSION="1.12.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -592,10 +592,18 @@ _clrepo_delete() {
 # re-running the same clrepo command attaches to the live session.
 # --- Slot allocation helpers ---
 
+# Ensure cache dir + slots.json exist. Idempotent; safe to call repeatedly.
+# Slot tracking is the default mode — this runs on first launch with no
+# user setup required.
+_clrepo_slots_init() {
+  mkdir -p "$_CLREPO_CACHE" 2>/dev/null
+  [ -f "$_CLREPO_SLOTS_FILE" ] || echo '{"slots":{}}' > "$_CLREPO_SLOTS_FILE"
+}
+
 # Read slots.json, reconcile PIDs, return JSON on stdout.
 _clrepo_slots_read() {
   local f="$_CLREPO_SLOTS_FILE"
-  [ -f "$f" ] || echo '{"slots":{}}' > "$f"
+  _clrepo_slots_init
   python3 -c "
 import json, os, sys
 with open('$f') as fh: d = json.load(fh)
@@ -621,7 +629,7 @@ _clrepo_slot_allocate() {
 
   # Reconcile dead slots (tmux session is source of truth when recorded;
   # otherwise fall back to PID liveness for foreground-mode records)
-  [ -f "$_CLREPO_SLOTS_FILE" ] || echo '{"slots":{}}' > "$_CLREPO_SLOTS_FILE"
+  _clrepo_slots_init
   python3 -c "
 import json, os, subprocess
 f = '$_CLREPO_SLOTS_FILE'
@@ -715,9 +723,11 @@ print(d.get('$_SLOT', ''))
 
   flock -u "$_lock_fd"
 
-  if [ -z "$_SLOT_TOKEN" ]; then
-    echo "clrepo: WARNING — no bot token for slot $_SLOT. Telegram channel will not work." >&2
-    echo "  Run setup-claude-channels.sh or add slot $_SLOT to slot-tokens.json." >&2
+  # Telegram is opt-in: only warn if slot-tokens.json exists but is missing
+  # this slot. With no slot-tokens.json at all, Telegram pages silently no-op.
+  if [ -z "$_SLOT_TOKEN" ] && [ -f "$_CLREPO_SLOT_TOKENS" ]; then
+    echo "clrepo: no bot token for slot $_SLOT — Telegram channel disabled for this session." >&2
+    echo "  Add slot $_SLOT to $_CLREPO_SLOT_TOKENS to enable." >&2
   fi
 
   # Wire presence-aware Telegram pages: install per-slot hooks. The watcher
@@ -1032,7 +1042,7 @@ _clrepo_watcher_start() {
 
 # Print slot status table.
 _clrepo_slot_status() {
-  [ -f "$_CLREPO_SLOTS_FILE" ] || { echo "No slots configured. Run setup-claude-channels.sh first." >&2; return 1; }
+  _clrepo_slots_init
 
   # Reconcile dead slots (tmux session is source of truth when recorded;
   # otherwise fall back to PID liveness for foreground-mode records)
@@ -1200,18 +1210,10 @@ _clrepo_launch() {
     return
   fi
 
-  # --- Slot allocation (skip with --no-channel or missing setup) ---
-  if [ "${_CLREPO_NO_CHANNEL:-0}" = 1 ] || [ ! -f "$_CLREPO_SLOTS_FILE" ]; then
-    # Legacy mode — no slot, no Telegram, shared CLAUDE_CONFIG_DIR (~/.claude).
-    # Warn so the user notices: legacy sessions don't show in `clrepo --status`.
-    if [ ! -f "$_CLREPO_SLOTS_FILE" ]; then
-      echo "clrepo: WARNING — $_CLREPO_SLOTS_FILE not found, falling back to legacy mode." >&2
-      echo "  This session won't appear in 'clrepo --status' and shares ~/.claude with your shell." >&2
-      echo "  Run setup-claude-channels.sh to enable slot tracking." >&2
-    else
-      echo "clrepo: --no-channel set: legacy mode (no slot, no Telegram, shared ~/.claude)." >&2
-      echo "  This session won't appear in 'clrepo --status'." >&2
-    fi
+  # --- Slot allocation (skip only with explicit --no-channel) ---
+  if [ "${_CLREPO_NO_CHANNEL:-0}" = 1 ]; then
+    # User opted out: no slot, no Telegram, shared CLAUDE_CONFIG_DIR (~/.claude).
+    echo "clrepo: --no-channel set: no slot, no Telegram, shared ~/.claude." >&2
     local -a claude_args=(-n "$repo")
     [ -n "$worktree" ] && claude_args+=(--worktree "$worktree")
     [ "$remote_control" = 1 ] && claude_args+=(--remote-control)
@@ -1226,7 +1228,7 @@ _clrepo_launch() {
     return
   fi
 
-  # Allocate a slot
+  # Allocate a slot (auto-inits slots.json on first use)
   _clrepo_slot_allocate "${_CLREPO_FORCED_SLOT:-}" || return
 
   local -a claude_args=(-n "$repo" --dangerously-skip-permissions --channels plugin:telegram@claude-plugins-official)
