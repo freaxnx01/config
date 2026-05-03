@@ -140,6 +140,30 @@ The slot/telegram spec (separate document) replaces `_clrepo_launch()` to add:
 
 Everything upstream of `_clrepo_launch` (picker, clone, create, delete, MRU, worktree parsing) is untouched. The worktree name arrives as `$2` of `_clrepo_launch`.
 
+## Bootstrap and channel wiring
+
+Slot tracking is the **default mode** — no setup required. `_clrepo_slots_init` creates `~/.cache/clrepo/slots.json` on first launch; allocation, status, reconciliation, and all other slot machinery just work. Opt out per-launch with `--no-channel`.
+
+Telegram pages are **opt-in**. `shell/setup-claude-channels.sh` is the interactive scaffold:
+
+```bash
+~/projects/repos/github/freaxnx01/public/config/shell/setup-claude-channels.sh
+```
+
+It prompts for the Telegram owner user_id and per-slot Passbolt resource IDs, validates each id against Passbolt, and writes the result. Idempotent — re-run anytime to add slots, rotate tokens, or update the owner.
+
+### Three-file split under `~/.cache/clrepo/`
+
+| File | Lifecycle | Bootstrapped by |
+|---|---|---|
+| `slots.json` | ephemeral runtime state — slot → repo/worktree/pid/session map | clrepo (auto, on first launch) |
+| `slot-tokens.json` | long-lived secrets — slot → Passbolt resource id for the bot token | `setup-claude-channels.sh` |
+| `owner.json` | one-time identity — `{telegram_user_id}` for paging | `setup-claude-channels.sh` |
+
+The split is intentional: runtime state churns every launch and is safe to delete; secrets need rotation tooling; identity is set once. Merging into a single `channels.json` would muddy those concerns.
+
+When `slot-tokens.json` is absent, clrepo prints a one-time discoverability hint (gated by a `.channels-hinted` sentinel) pointing at the setup script, then stays silent for the host's lifetime.
+
 ## Presence-aware Telegram pages
 
 clrepo proactively pages each slot's Telegram bot when Claude is paused or
