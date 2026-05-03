@@ -1460,7 +1460,7 @@ EOF
   all=$(find "$_CLREPO_BASE" -type d -name '_archive' -prune -o -type d -name .git -printf '%h\n' 2>/dev/null | sed "s|^$_CLREPO_BASE/||")
 
   # --delete <name> (non-interactive shortcut): match local repos by basename.
-  if [ "$mode_delete" = 1 ] && [ -n "$1" ]; then
+  if [ "$mode_delete" = 1 ] && [ -n "${1:-}" ]; then
     local matches
     matches=$(printf '%s\n' "$all" | grep -Ei "(^|/)$1$")
     if [ -z "$matches" ]; then
@@ -1478,7 +1478,7 @@ EOF
 
   # Positional shortcut: case-insensitive basename lookup (exact, then substring).
   # If name misses, fall back to metadata (topics + description) search.
-  if [ "$mode_delete" = 0 ] && [ -n "$1" ]; then
+  if [ "$mode_delete" = 0 ] && [ -n "${1:-}" ]; then
     local sel
     sel=$(printf '%s\n' "$all" | grep -Ei "(^|/)$1$" | head -1)
     [ -z "$sel" ] && sel=$(printf '%s\n' "$all" | grep -Ei "(^|/)[^/]*$1[^/]*$" | head -1)

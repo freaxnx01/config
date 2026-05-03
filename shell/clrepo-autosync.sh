@@ -7,8 +7,11 @@
 #   sourced:   defines _clrepo_autosync <repo_path> [token]
 #   executed:  $1 = tmux session name, $2 = optional bot token.
 #              Reads repo path from $_CLREPO_CACHE/sessions/<session>.path
-
-set -uo pipefail
+#
+# NOTE: `set -uo pipefail` lives inside the script-mode block at the bottom,
+# not at file scope. Sourcing this file (mode 1) must NOT enable strict mode
+# in the user's interactive shell — that would crash any clrepo code path
+# that touches an unset variable.
 
 _CLREPO_CACHE="${_CLREPO_CACHE:-$HOME/.cache/clrepo}"
 _CLREPO_OWNER="$_CLREPO_CACHE/owner.json"
@@ -96,6 +99,7 @@ _clrepo_autosync() {
 
 # Script mode: tmux session-closed hook entry point.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  set -uo pipefail
   session="${1:-}"
   token="${2:-}"
   [ -z "$session" ] && exit 0
