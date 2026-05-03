@@ -152,6 +152,41 @@ tmux session. See spec at `docs/superpowers/specs/2026-05-02-clrepo-presence-awa
 
 Both event sources gate through `_clrepo_should_page` before sending. Pages go to the slot's existing per-slot bot (`@claude_freax_s<N>_bot`); replies route back via the existing `--channels plugin:telegram@...` mechanism.
 
+## Use cases: Telegram pages vs. Remote Control
+
+Two independent channels keep you in the loop when away from the terminal. Both are on by default; opt out with `--no-channel` (Telegram + slot tracking) or `--no-remote-control` / `--no-rc`.
+
+| | Telegram pages | Remote Control |
+|---|---|---|
+| Direction | push (Claude → you) | pull (you → Claude) |
+| Triggers | idle prompt (debounced 120s), elicitation dialog, 5h usage limit | manual — open claude.ai/code or mobile app |
+| Granularity | discrete pages with short replies | full live-session steering (read + write) |
+| Auth | per-slot bot token (Passbolt-backed) | claude.ai OAuth |
+| Context cost | zero — pages are out-of-band | counts against the live session's usage quota |
+| Presence-aware | yes — gated on `~/.cache/clrepo/presence` | no — always available while session is alive |
+
+### Telegram — when to use
+
+- **Long-running tasks.** Kick off, walk away, get pinged when Claude pauses or hits the 5h limit.
+- **Many parallel slots.** Each slot has its own bot, so the page identifies *which* session needs attention.
+- **One-line replies suffice.** "yes", "go ahead", "use option 2" — no need to open a full client.
+
+### Remote Control — when to use
+
+- **Steer from anywhere.** Continue an active session from claude.ai/code or the mobile app without an SSH terminal.
+- **Spectate long runs.** Watch context unfold in the browser without holding the tmux attach.
+- **Device hand-off.** Start at desk, continue on laptop or phone — same live session.
+
+### Combining them — meaningful?
+
+Yes. Treat them as complementary tiers, not redundant:
+
+1. **Telegram** pages you when something needs attention (push, low-friction, free).
+2. If a one-line reply suffices, answer in Telegram — done.
+3. If you need full context — read scrollback, send a multi-line steer, kick off a follow-up — open **Remote Control** on the same session.
+
+Both target the same underlying Claude session, so a Telegram reply and a Remote Control prompt land in the same conversation. Presence governs Telegram alone; Remote Control is always reachable while the session is alive.
+
 ## Config variables
 
 | Variable | Default | Purpose |
