@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.13.0"
+_CLREPO_VERSION="1.13.1"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1293,9 +1293,30 @@ _clrepo_version_gt() {
   [ "$higher" = "$1" ]
 }
 
-# Background-refresh $_CLREPO_CACHE/latest-version (mtime-gated by TTL),
-# then print a one-line hint if the cached version is newer than local.
+# Hint if a newer _CLREPO_VERSION is available. Local-first: check the
+# on-disk clrepo.sh that this shell was sourced from (kept current with
+# origin by _clrepo_autosync). Fall back to a TTL-gated remote curl only
+# when the on-disk path can't be resolved or read.
 _clrepo_check_latest() {
+  local script="${BASH_SOURCE[0]}"
+  if command -v readlink >/dev/null 2>&1; then
+    script=$(readlink -f "$script" 2>/dev/null || echo "$script")
+  fi
+
+  if [ -r "$script" ]; then
+    local on_disk
+    on_disk=$(grep -m1 '^_CLREPO_VERSION=' "$script" 2>/dev/null \
+              | sed -E 's/^_CLREPO_VERSION="?([^"]+)"?.*/\1/')
+    if [ -n "$on_disk" ]; then
+      if _clrepo_version_gt "$on_disk" "$_CLREPO_VERSION"; then
+        echo "clrepo: new version $on_disk available (you have $_CLREPO_VERSION) — run \`clrepo update\`" >&2
+      fi
+      return 0
+    fi
+  fi
+
+  # Fallback: on-disk path missing/unreadable/malformed. Use the cached
+  # remote check (background-refresh, mtime-gated by TTL).
   local cache="$_CLREPO_CACHE/latest-version"
   local age
   age=$(( $(date +%s) - $(stat -c %Y "$cache" 2>/dev/null || echo 0) ))
