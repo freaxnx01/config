@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.11.0"
+_CLREPO_VERSION="1.11.1"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1063,11 +1063,13 @@ tokens = {}
 try:
     with open('$_CLREPO_SLOT_TOKENS') as f: tokens = json.load(f)
 except: pass
+slots = d.get('slots', {})
+keys = set(slots.keys()) | set(tokens.keys()) | {str(n) for n in range(1, $_CLREPO_MAX_SLOTS + 1)}
 now = int(time.time())
 print(f\"{'SLOT':<5} {'REPO':<30} {'WORKTREE':<15} {'STARTED':<20} {'PID':<8} {'BOT'}\")
 print('-' * 95)
-for n in sorted(d.get('slots', {}).keys(), key=int):
-    v = d['slots'][n]
+for n in sorted(keys, key=int):
+    v = slots.get(n)
     pb = tokens.get(n, '')
     bot = f'@claude_freax_s{n}_bot'
     has_token = '✓' if pb else '—'
