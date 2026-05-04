@@ -87,14 +87,18 @@ fi
 echo
 
 # --- 2. Per-slot bot tokens (Passbolt resource IDs) ---
-echo "Per-slot bot tokens — paste the Passbolt resource ID for each @claude_freax_sN_bot."
-echo "  Empty = skip; existing values shown as default."
+echo "Per-slot bot tokens — paste the Passbolt resource ID for each bot."
+echo "  Slot 0 = admin bot (BotFather-named). Empty = skip; existing values shown as default."
 tokens_json=$(json_read "$TOKENS")
 result_json="$tokens_json"
 
-for n in $(seq 1 "$MAX"); do
+for n in $(seq 0 "$MAX"); do
   cur=$(printf '%s' "$tokens_json" | json_get "$n")
-  echo "  slot $n (@claude_freax_s${n}_bot)"
+  if [ "$n" = 0 ]; then
+    echo "  slot 0 (admin bot — empty disables admin-bot title management)"
+  else
+    echo "  slot $n (@claude_freax_s${n}_bot)"
+  fi
   pb_id=$(prompt_default "    Passbolt id" "$cur")
   if [ -z "$pb_id" ]; then
     echo "    (skipped)"
