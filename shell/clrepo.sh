@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.15.2"
+_CLREPO_VERSION="1.16.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1524,7 +1524,7 @@ _clrepo_update() {
 }
 
 clrepo() {
-  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" remote_control=1 _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT="" _CLREPO_NO_SYNC=0
+  local with_remote=0 force_refresh=0 mode_delete=0 worktree="" editor="" remote_control=1 _CLREPO_NO_CHANNEL=0 _CLREPO_FORCED_SLOT="" _CLREPO_NO_SYNC=0 mode_attach=0
   local -a pos=()
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -1535,6 +1535,7 @@ clrepo() {
       --slot)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _CLREPO_FORCED_SLOT="$2"; shift 2 ;;
+      -a|--attach)    mode_attach=1; shift ;;
       --status)       _clrepo_slot_status; return ;;
       --free)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
@@ -1576,6 +1577,7 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   --slot N              force a specific slot (1..N)
   --no-channel          legacy mode, no slot allocation, no Telegram
   --no-sync             skip the upstream fast-forward pull on startup
+  -a, --attach          fzf picker over live sessions; reattach to selection
   --status              show slot status table
   --free N              force-free slot N (escape hatch)
 In picker:
@@ -1593,6 +1595,28 @@ EOF
     esac
   done
   set -- "${pos[@]}"
+
+  if [ "$mode_attach" = 1 ]; then
+    local bad=""
+    [ "$with_remote" = 1 ]            && bad="${bad:+$bad, }-r/--remote/--refresh"
+    [ "$mode_delete" = 1 ]            && bad="${bad:+$bad, }-D/--delete"
+    [ -n "$worktree" ]                && bad="${bad:+$bad, }-w/--worktree"
+    [ -n "$editor" ]                  && bad="${bad:+$bad, }-c/-p"
+    [ "$_CLREPO_NO_CHANNEL" = 1 ]     && bad="${bad:+$bad, }--no-channel"
+    [ "$_CLREPO_NO_SYNC" = 1 ]        && bad="${bad:+$bad, }--no-sync"
+    [ -n "$_CLREPO_FORCED_SLOT" ]     && bad="${bad:+$bad, }--slot"
+    [ "$remote_control" != 1 ]        && bad="${bad:+$bad, }--no-rc"
+    if [ -n "$bad" ]; then
+      echo "clrepo: --attach takes no other flags (got: $bad). Run \`clrepo <repo>\` to launch." >&2
+      return 2
+    fi
+    if [ ${#pos[@]} -gt 0 ]; then
+      echo "clrepo: --attach takes no positional args (got: ${pos[*]}). Run \`clrepo <repo>\` to launch." >&2
+      return 2
+    fi
+    _clrepo_attach_pick
+    return
+  fi
 
   mkdir -p "$_CLREPO_CACHE"
   local mru="$_CLREPO_CACHE/mru"
@@ -1764,7 +1788,7 @@ _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --free -V --version -h --help"
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --free -a --attach -V --version -h --help"
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
