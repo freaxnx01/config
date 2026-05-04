@@ -220,6 +220,33 @@ Yes. Treat them as complementary tiers, not redundant:
 
 Both target the same underlying Claude session, so a Telegram reply and a Remote Control prompt land in the same conversation. Presence governs Telegram alone; Remote Control is always reachable while the session is alive.
 
+### Slash commands via remote inputs
+
+Both remote channels relay user text into the same input stream Claude Code reads from the TUI, so most slash commands work — with two notable carve-outs.
+
+**Telegram bot (channel plugin)**
+- The `--channels plugin:telegram@claude-plugins-official` flag relays inbound Telegram DMs as `<channel source="telegram">` events into the session. The leading `/` is preserved, so `/help`, `/clear`, `/compact`, plugin commands, and project commands (e.g. clrepo's `/status`) all execute as slash commands.
+- No documented escape to send a literal `/foo` as plain text — if you need that, currently you'd have to drop the leading `/`.
+
+**Remote Control (`/remote-control`, default in clrepo)**
+- Most text-producing commands work the same as in the TUI: `/compact`, `/clear`, `/context`, `/usage`, `/exit`, `/extra-usage`, `/recap`, `/reload-plugins`.
+- Local-only (blocked over RC because they need a terminal UI): `/mcp`, `/plugin`, `/resume` (interactive pickers), and any command that only applies to the local CLI (e.g. `/remote-control` itself).
+- Auth-sensitive commands like `/login` require a browser flow; running them remotely doesn't help.
+
+**Implication for the slot 0 admin flow**
+
+The custom slash commands installed by `clrepo --install-admin-commands` (`/status`, `/issues`, `/worktree-status`, …) are project-level commands stored under `~/.claude-s0/commands/`. Both Telegram and RC see them as regular slash commands and will execute them, so the admin can drive clrepo from a phone via either channel.
+
+References:
+- https://code.claude.com/docs/en/remote-control.md (Limitations section)
+- https://code.claude.com/docs/en/channels.md (Telegram setup)
+
+### Compatibility: Telegram + Remote Control on the same slot
+
+Both subsystems run inside the same `claude` process and share that slot's `CLAUDE_CONFIG_DIR` (`~/.claude-s<N>`) and `TELEGRAM_BOT_TOKEN` env. They don't conflict at the launcher level: `--channels plugin:telegram@…` and `--remote-control` are independent flags wired together at line 1367 of `clrepo.sh`. Per-slot isolation holds (each slot's bot has its own token; RC sessions are scoped to the OAuth user).
+
+The lifecycle paths under `_clrepo_telegram_setup` / `_clrepo_telegram_cleanup` (`shell/clrepo.sh:822, 867`) fire identically under both tmux and foreground launches; reattaching a tmux'd RC session keeps the bot alive (no duplicate registrations, no dropped pages) because setup runs only on session create.
+
 ## Config variables
 
 | Variable | Default | Purpose |
