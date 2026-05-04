@@ -1129,6 +1129,7 @@ with open(cfg, 'w') as f: json.dump(d, f, indent=2)
   flock -u "$_lock_fd"
 }
 
+<<<<<<< HEAD
 # Wire slot 0 (admin) for the SessionStart-clear hook + label restore:
 #   1. write the label to ~/.claude-s0/clrepo-label so the relabel hook
 #      can read it.
@@ -1153,6 +1154,45 @@ _clrepo_setup_admin() {
   echo "  label file: $cfg_dir/clrepo-label"
   echo "  hooks:      $cfg_dir/settings.json (Notification, UserPromptSubmit, SessionStart[clear])"
   echo "  on /clear   the SessionStart hook will ask Claude to restore the label via /rename"
+=======
+# Symlink the admin slash-command markdown files from
+# `clrepo-admin-commands/` into ~/.claude-s0/commands/. Slot 0 is the
+# admin Claude session (manually launched, BotFather-named bot); these
+# commands wrap clrepo flags so the user can invoke `--status`,
+# `--worktree-status`, `--issues`, etc. via Claude's slash-command UI.
+# Idempotent — replaces existing symlinks pointing at our directory,
+# leaves any unrelated files alone.
+_clrepo_install_admin_commands() {
+  local src="$_CLREPO_DIR/clrepo-admin-commands"
+  local dst="$HOME/.claude-s0/commands"
+  [ -d "$src" ] || { echo "clrepo: admin commands dir missing: $src" >&2; return 1; }
+  mkdir -p "$dst" || { echo "clrepo: failed to create $dst" >&2; return 1; }
+
+  local installed=0
+  local f name target
+  for f in "$src"/*.md; do
+    [ -f "$f" ] || continue
+    name=$(basename "$f")
+    target="$dst/$name"
+    # Replace existing symlink only if it points at our source dir;
+    # leave a regular file alone (could be user-customised).
+    if [ -L "$target" ]; then
+      ln -sfn "$f" "$target"
+    elif [ -e "$target" ]; then
+      echo "clrepo: $target exists and is not a symlink; skipping" >&2
+      continue
+    else
+      ln -s "$f" "$target"
+    fi
+    installed=$((installed + 1))
+  done
+  echo "clrepo: installed $installed admin slash commands at $dst"
+  echo "  invoke from inside the slot 0 Claude session via /<command>:"
+  for f in "$src"/*.md; do
+    [ -f "$f" ] || continue
+    printf '    /%s\n' "$(basename "$f" .md)"
+  done
+>>>>>>> 799a057 (feat(clrepo): add admin slash commands for slot 0 (closes #10))
 }
 
 # Start the usage-limit watcher daemon if not already running. Idempotent.
@@ -1986,6 +2026,7 @@ clrepo() {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       --status-rc)    _clrepo_slot_status_rc; return ;;
 =======
       --doctor)       _clrepo_doctor; return ;;
@@ -2001,6 +2042,9 @@ clrepo() {
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a label" >&2; return 2; }
         _clrepo_setup_admin "$2"; return ;;
 >>>>>>> e58379a (feat(clrepo): restore session label after /clear (closes #20))
+=======
+      --install-admin-commands) _clrepo_install_admin_commands; return ;;
+>>>>>>> 799a057 (feat(clrepo): add admin slash commands for slot 0 (closes #10))
       --free)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
@@ -2047,6 +2091,7 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   --status-rc           show Remote Control URL per occupied slot
 =======
   --doctor              diagnose forge targets (direnv, tokens, API access)
@@ -2062,6 +2107,10 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
 =======
   --setup-admin LABEL   wire slot 0 (admin) for label-restore hook
 >>>>>>> e58379a (feat(clrepo): restore session label after /clear (closes #20))
+=======
+  --install-admin-commands
+                        symlink admin slash commands into ~/.claude-s0/commands/
+>>>>>>> 799a057 (feat(clrepo): add admin slash commands for slot 0 (closes #10))
   --free N              force-free slot N (escape hatch)
 In picker:
   Enter   launch (cloning first if remote)
@@ -2275,6 +2324,7 @@ _clrepo() {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --free -a --attach -V --version -h --help"
 =======
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --doctor --free -a --attach -V --version -h --help"
@@ -2288,6 +2338,9 @@ _clrepo() {
 =======
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --setup-admin --free -a --attach -V --version -h --help"
 >>>>>>> e58379a (feat(clrepo): restore session label after /clear (closes #20))
+=======
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --install-admin-commands --free -a --attach -V --version -h --help"
+>>>>>>> 799a057 (feat(clrepo): add admin slash commands for slot 0 (closes #10))
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
