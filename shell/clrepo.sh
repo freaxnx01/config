@@ -1161,6 +1161,7 @@ for n in sorted(keys, key=int):
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Print Remote Control status table. For each occupied slot, look up the
 # Claude session record under $CLAUDE_CONFIG_DIR/sessions/<pid>.json and
 # extract `bridgeSessionId` — the RC session id rendered as
@@ -1222,6 +1223,17 @@ for n in sorted(keys, key=int):
 # endpoint. Prints one block per target with ✓/✗ markers and a final
 # summary. Returns 0 if all checks passed, 1 otherwise.
 _clrepo_doctor() {
+=======
+# Aggregate open issues across configured GitHub + Forgejo forges into
+# a single overview. Iterates discovered forge targets, dedupes by
+# (forge, owner), and queries each forge's "issues across owned repos"
+# endpoint:
+#   - github  → /search/issues?q=is:issue+is:open+user:<owner>
+#   - forgejo → /repos/issues/search?state=open&type=issues&owner=<owner>
+# GitLab/ADO are skipped (different issue/work-item models, out of scope
+# for the `claude-ready` / `claude-working` workflow this command serves).
+_clrepo_issues() {
+>>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
   local targets
   targets=$(_clrepo_targets)
   if [ -z "$targets" ]; then
@@ -1229,6 +1241,7 @@ _clrepo_doctor() {
     return 1
   fi
 
+<<<<<<< HEAD
   local pass=0 fail=0
   while IFS=$'\t' read -r rel forge owner vis; do
     [ -z "$rel" ] && continue
@@ -1400,6 +1413,94 @@ _clrepo_worktree_status() {
   printf '\n%d repos · %d dirty · %d ahead · %d with extra worktrees\n' \
     "$total" "$dirty" "$ahead" "$wt_count"
 >>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
+=======
+  # Dedupe by (forge, owner) — public/private subdirs share a token.
+  # Pick the first matching rel for each pair (used as the cd target so
+  # direnv can load the credentials).
+  local pairs
+  pairs=$(printf '%s\n' "$targets" \
+    | awk -F'\t' '$2=="github" || $2=="forgejo" {
+        key = $2 "\t" $3
+        if (!(key in seen)) { seen[key] = 1; print $1 "\t" $2 "\t" $3 }
+      }')
+
+  if [ -z "$pairs" ]; then
+    echo "clrepo: no GitHub or Forgejo targets discovered" >&2
+    return 1
+  fi
+
+  local total=0
+  while IFS=$'\t' read -r rel forge owner; do
+    [ -z "$rel" ] && continue
+    local rows
+    rows=$(
+      cd "$_CLREPO_BASE/$rel" 2>/dev/null || exit
+      command -v direnv >/dev/null && eval "$(direnv export bash 2>/dev/null)"
+      case "$forge" in
+        github)
+          local tok="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+          [ -z "$tok" ] && exit 0
+          # search/issues caps at 100 per page; bump if you ever exceed.
+          curl -sf -H "Authorization: token $tok" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/search/issues?q=is:issue+is:open+user:$owner&per_page=100" \
+            | jq -r --arg forge "$forge" '
+                .items // []
+                | sort_by(.repository_url, .number)
+                | .[]
+                | [ $forge,
+                    (.repository_url | sub("https://api.github.com/repos/"; "")),
+                    (.number | tostring),
+                    (.title | gsub("[\\t\\n\\r]"; " ")),
+                    ((.labels // []) | map(.name) | join(",")),
+                    .html_url ]
+                | @tsv
+              ' 2>/dev/null
+          ;;
+        forgejo)
+          [ -z "${FORGEJO_TOKEN:-}" ] && exit 0
+          curl -sf -H "Authorization: token $FORGEJO_TOKEN" \
+            "https://git.home.freaxnx01.ch/api/v1/repos/issues/search?state=open&type=issues&owner=$owner&limit=50" \
+            | jq -r --arg forge "$forge" '
+                . // []
+                | sort_by(.repository.full_name, .number)
+                | .[]
+                | [ $forge,
+                    .repository.full_name,
+                    (.number | tostring),
+                    (.title | gsub("[\\t\\n\\r]"; " ")),
+                    ((.labels // []) | map(.name) | join(",")),
+                    .html_url ]
+                | @tsv
+              ' 2>/dev/null
+          ;;
+      esac
+    )
+    if [ -n "$rows" ]; then
+      while IFS= read -r row; do
+        [ -z "$row" ] && continue
+        total=$((total + 1))
+        printf '%s\n' "$row"
+      done <<< "$rows"
+    fi
+  done <<< "$pairs" | awk -F'\t' -v total_var="" '
+    BEGIN {
+      printf "%-8s %-30s %-5s %-50s %s\n", "FORGE", "REPO", "#", "TITLE", "LABELS"
+      for (i=0; i<110; i++) printf "-"
+      printf "\n"
+    }
+    {
+      forge=$1; repo=$2; num="#"$3; title=$4; labels=$5; url=$6
+      if (length(title) > 50) title = substr(title, 1, 47) "..."
+      printf "%-8s %-30s %-5s %-50s %s\n", forge, repo, num, title, labels
+      printf "         %s\n", url
+      n++
+    }
+    END {
+      printf "\n%d open issue%s\n", n, (n == 1 ? "" : "s")
+    }
+  '
+>>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
 }
 
 # Pick a live tmux-backed session via fzf and reattach. Reads slots.json
@@ -1787,6 +1888,7 @@ clrepo() {
       --status)       _clrepo_slot_status; return ;;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       --status-rc)    _clrepo_slot_status_rc; return ;;
 =======
       --doctor)       _clrepo_doctor; return ;;
@@ -1794,6 +1896,9 @@ clrepo() {
 =======
       --worktree-status|--ws) _clrepo_worktree_status; return ;;
 >>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
+=======
+      --issues)       _clrepo_issues; return ;;
+>>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
       --free)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
@@ -1838,6 +1943,7 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   --status              show slot status table
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   --status-rc           show Remote Control URL per occupied slot
 =======
   --doctor              diagnose forge targets (direnv, tokens, API access)
@@ -1847,6 +1953,9 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
                         show git status per local repo (branch, dirty,
                         ahead, extra worktrees)
 >>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
+=======
+  --issues              list open issues across GitHub + Forgejo forges
+>>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
   --free N              force-free slot N (escape hatch)
 In picker:
   Enter   launch (cloning first if remote)
@@ -2058,6 +2167,7 @@ _clrepo() {
   if [[ "$cur" == -* ]]; then
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --free -a --attach -V --version -h --help"
 =======
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --doctor --free -a --attach -V --version -h --help"
@@ -2065,6 +2175,9 @@ _clrepo() {
 =======
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --worktree-status --ws --free -a --attach -V --version -h --help"
 >>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
+=======
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --issues --free -a --attach -V --version -h --help"
+>>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
