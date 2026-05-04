@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.13.3"
+_CLREPO_VERSION="1.13.4"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1178,9 +1178,16 @@ _clrepo_launch() {
   local repo
   repo=$(basename "$sel")
 
-  local _remote_url
+  local _remote_url _session_path
   _remote_url=$(git remote get-url origin 2>/dev/null || echo '(no remote)')
-  printf '%s\n%s\n' "$PWD" "$_remote_url" > "$_CLREPO_CACHE/last"
+  # `claude --worktree NAME` runs in <repo>/.claude/worktrees/<NAME>/, so
+  # record that path (not the main repo) for `path:` and downstream readers.
+  # Copilot mode rewrites this further down after cd'ing into the git worktree.
+  _session_path="$PWD"
+  if [ -n "$worktree" ] && [ -z "$editor" ]; then
+    _session_path="$PWD/.claude/worktrees/$worktree"
+  fi
+  printf '%s\n%s\n' "$_session_path" "$_remote_url" > "$_CLREPO_CACHE/last"
 
   # VS Code mode — open directory, skip slot/Telegram/tmux entirely
   if [ "$editor" = "code" ]; then
