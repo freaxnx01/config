@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.14.0"
+_CLREPO_VERSION="1.15.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -786,6 +786,38 @@ with open(f, 'w') as fh: json.dump(d, fh, indent=2)
         "$_CLREPO_CACHE/sessions/${slot}.limit-paged" 2>/dev/null
 }
 
+# Sanity-check the slot's OAuth credentials before launch so the user sees
+# the real cause in clrepo's output (rather than a cryptic "Remote Control
+# failed to connect: /login" once Claude is up). Best-effort: any parsing
+# error is silent. Args: $1 = slot number.
+_clrepo_slot_creds_check() {
+  local slot="$1"
+  local f="$HOME/.claude-s${slot}/.credentials.json"
+  if [ ! -f "$f" ]; then
+    _clrepo_warn "slot s${slot} has no credentials, run /login inside Claude after launch"
+    return
+  fi
+  command -v python3 >/dev/null 2>&1 || return 0
+  python3 - "$slot" "$f" <<'PY'
+import json, sys, time
+slot, path = sys.argv[1], sys.argv[2]
+try:
+    with open(path) as fh: d = json.load(fh)
+except Exception:
+    print(f"\033[33mclrepo: slot s{slot} credentials unreadable, /login may be required\033[0m", file=sys.stderr)
+    sys.exit(0)
+oa = d.get('claudeAiOauth') or {}
+ea = oa.get('expiresAt') or 0
+rt = oa.get('refreshToken') or ''
+# expiresAt is milliseconds since epoch; treat smaller magnitudes as seconds defensively.
+now_ms = int(time.time() * 1000)
+ea_ms = ea if ea > 10**12 else ea * 1000
+expired = ea_ms > 0 and ea_ms < now_ms
+if expired and not rt:
+    print(f"\033[33mclrepo: slot s{slot} access token expired and no refresh token — Remote Control will fail until you /login\033[0m", file=sys.stderr)
+PY
+}
+
 # Call Telegram API to set bot name and pin a banner message.
 _clrepo_telegram_setup() {
   local slot="$1" repo="$2" worktree="${3:-}" token="$4"
@@ -1271,6 +1303,7 @@ _clrepo_launch() {
   export TELEGRAM_BOT_TOKEN="$_SLOT_TOKEN"
 
   echo "clrepo: using slot s${_SLOT} (CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR)" >&2
+  _clrepo_slot_creds_check "$_SLOT"
 
   if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
     local session
