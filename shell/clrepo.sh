@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.15.0"
+_CLREPO_VERSION="1.15.1"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1078,12 +1078,11 @@ _clrepo_watcher_start() {
   return 0
 }
 
-# Print slot status table.
-_clrepo_slot_status() {
-  _clrepo_slots_init
-
-  # Reconcile dead slots (tmux session is source of truth when recorded;
-  # otherwise fall back to PID liveness for foreground-mode records)
+# Reconcile dead slots in slots.json: tmux session is source of truth when
+# the slot record has one, otherwise fall back to PID liveness for
+# foreground-mode records. Idempotent and silent on no-op. Both
+# _clrepo_slot_status and _clrepo_attach_pick call this before reading.
+_clrepo_reconcile_slots() {
   python3 -c "
 import json, os, subprocess
 f = '$_CLREPO_SLOTS_FILE'
@@ -1113,6 +1112,12 @@ for k in list(slots.keys()):
     if n < 0 or n > MAX: del slots[k]
 with open(f, 'w') as fh: json.dump(d, fh, indent=2)
 " 2>/dev/null
+}
+
+# Print slot status table.
+_clrepo_slot_status() {
+  _clrepo_slots_init
+  _clrepo_reconcile_slots
 
   python3 -c "
 import json, time
