@@ -1159,6 +1159,7 @@ for n in sorted(keys, key=int):
 " 2>/dev/null
 }
 
+<<<<<<< HEAD
 # Print Remote Control status table. For each occupied slot, look up the
 # Claude session record under $CLAUDE_CONFIG_DIR/sessions/<pid>.json and
 # extract `bridgeSessionId` — the RC session id rendered as
@@ -1214,6 +1215,132 @@ for n in sorted(keys, key=int):
         rc = 'inactive'
     print(f's{n:<4} {repo:<30} {started:<14} {rc:<10} {url}')
 " 2>/dev/null
+=======
+# Diagnose forge targets: list each, verify direnv exports the expected
+# token, and test access by calling the forge's `/user` (or equivalent)
+# endpoint. Prints one block per target with ✓/✗ markers and a final
+# summary. Returns 0 if all checks passed, 1 otherwise.
+_clrepo_doctor() {
+  local targets
+  targets=$(_clrepo_targets)
+  if [ -z "$targets" ]; then
+    echo "clrepo: no forge targets discovered under $_CLREPO_BASE" >&2
+    return 1
+  fi
+
+  local pass=0 fail=0
+  while IFS=$'\t' read -r rel forge owner vis; do
+    [ -z "$rel" ] && continue
+    local label
+    case "$forge" in
+      github) label="$forge ($owner/$vis)" ;;
+      *)      label="$forge ($owner)" ;;
+    esac
+    printf '\n\033[1m%s\033[0m  path: %s\n' "$label" "$rel"
+
+    local result
+    result=$(
+      cd "$_CLREPO_BASE/$rel" 2>/dev/null || { echo "ERR: target dir missing"; exit 1; }
+      if ! command -v direnv >/dev/null; then
+        echo "ERR: direnv not on PATH"; exit 1
+      fi
+      eval "$(direnv export bash 2>/dev/null)"
+      case "$forge" in
+        github)
+          local tok="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+          if [ -z "$tok" ]; then echo "TOKEN: missing GH_TOKEN/GITHUB_TOKEN"; exit 1; fi
+          local code body
+          body=$(curl -s -o /tmp/.clrepo-doctor.$$ -w '%{http_code}' \
+            -H "Authorization: token $tok" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/user")
+          code="$body"
+          local login=""
+          login=$(jq -r '.login // empty' /tmp/.clrepo-doctor.$$ 2>/dev/null)
+          rm -f /tmp/.clrepo-doctor.$$ 2>/dev/null
+          if [ "$code" = "200" ] && [ -n "$login" ]; then
+            echo "OK: GH_TOKEN present; api.github.com/user → $login"
+          else
+            echo "FAIL: GH_TOKEN present; api.github.com/user → HTTP $code"
+            exit 1
+          fi
+          ;;
+        gitlab)
+          if [ -z "${GITLAB_TOKEN:-}" ]; then echo "TOKEN: missing GITLAB_TOKEN"; exit 1; fi
+          local code body
+          body=$(curl -s -o /tmp/.clrepo-doctor.$$ -w '%{http_code}' \
+            -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+            "https://gitlab.freaxnx01.ch/api/v4/user")
+          code="$body"
+          local user=""
+          user=$(jq -r '.username // empty' /tmp/.clrepo-doctor.$$ 2>/dev/null)
+          rm -f /tmp/.clrepo-doctor.$$ 2>/dev/null
+          if [ "$code" = "200" ] && [ -n "$user" ]; then
+            echo "OK: GITLAB_TOKEN present; api/v4/user → $user"
+          else
+            echo "FAIL: GITLAB_TOKEN present; api/v4/user → HTTP $code"
+            exit 1
+          fi
+          ;;
+        forgejo)
+          if [ -z "${FORGEJO_TOKEN:-}" ]; then echo "TOKEN: missing FORGEJO_TOKEN"; exit 1; fi
+          local code body
+          body=$(curl -s -o /tmp/.clrepo-doctor.$$ -w '%{http_code}' \
+            -H "Authorization: token $FORGEJO_TOKEN" \
+            "https://git.home.freaxnx01.ch/api/v1/user")
+          code="$body"
+          local user=""
+          user=$(jq -r '.login // empty' /tmp/.clrepo-doctor.$$ 2>/dev/null)
+          rm -f /tmp/.clrepo-doctor.$$ 2>/dev/null
+          if [ "$code" = "200" ] && [ -n "$user" ]; then
+            echo "OK: FORGEJO_TOKEN present; api/v1/user → $user"
+          else
+            echo "FAIL: FORGEJO_TOKEN present; api/v1/user → HTTP $code"
+            exit 1
+          fi
+          ;;
+        ado)
+          local tok="${AZURE_DEVOPS_EXT_PAT:-${ADO_PAT:-}}"
+          if [ -z "$tok" ]; then echo "TOKEN: missing AZURE_DEVOPS_EXT_PAT/ADO_PAT"; exit 1; fi
+          local code body
+          body=$(curl -s -o /tmp/.clrepo-doctor.$$ -w '%{http_code}' -u ":$tok" \
+            "https://dev.azure.com/$owner/_apis/connectionData?api-version=7.1")
+          code="$body"
+          local user=""
+          user=$(jq -r '.authenticatedUser.providerDisplayName // empty' /tmp/.clrepo-doctor.$$ 2>/dev/null)
+          rm -f /tmp/.clrepo-doctor.$$ 2>/dev/null
+          if [ "$code" = "200" ] && [ -n "$user" ]; then
+            echo "OK: ADO PAT present; connectionData → $user"
+          else
+            echo "FAIL: ADO PAT present; connectionData → HTTP $code"
+            exit 1
+          fi
+          ;;
+      esac
+    )
+    local rc=$?
+    case "$result" in
+      "OK: "*)
+        printf '  \033[32m✓\033[0m %s\n' "${result#OK: }"
+        pass=$((pass + 1)) ;;
+      "FAIL: "*)
+        printf '  \033[31m✗\033[0m %s\n' "${result#FAIL: }"
+        fail=$((fail + 1)) ;;
+      "TOKEN: "*)
+        printf '  \033[31m✗\033[0m %s\n' "${result#TOKEN: }"
+        fail=$((fail + 1)) ;;
+      "ERR: "*)
+        printf '  \033[31m✗\033[0m %s\n' "${result#ERR: }"
+        fail=$((fail + 1)) ;;
+      *)
+        printf '  \033[31m✗\033[0m unknown failure (rc=%s): %s\n' "$rc" "$result"
+        fail=$((fail + 1)) ;;
+    esac
+  done <<< "$targets"
+
+  printf '\nSummary: %d passed, %d failed\n' "$pass" "$fail"
+  [ "$fail" = 0 ]
+>>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
 }
 
 # Pick a live tmux-backed session via fzf and reattach. Reads slots.json
@@ -1599,7 +1726,11 @@ clrepo() {
         _CLREPO_FORCED_SLOT="$2"; shift 2 ;;
       -a|--attach)    mode_attach=1; shift ;;
       --status)       _clrepo_slot_status; return ;;
+<<<<<<< HEAD
       --status-rc)    _clrepo_slot_status_rc; return ;;
+=======
+      --doctor)       _clrepo_doctor; return ;;
+>>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
       --free)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
@@ -1642,7 +1773,11 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   --no-sync             skip the upstream fast-forward pull on startup
   -a, --attach          fzf picker over live sessions; reattach to selection
   --status              show slot status table
+<<<<<<< HEAD
   --status-rc           show Remote Control URL per occupied slot
+=======
+  --doctor              diagnose forge targets (direnv, tokens, API access)
+>>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
   --free N              force-free slot N (escape hatch)
 In picker:
   Enter   launch (cloning first if remote)
@@ -1852,7 +1987,11 @@ _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
+<<<<<<< HEAD
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --free -a --attach -V --version -h --help"
+=======
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --doctor --free -a --attach -V --version -h --help"
+>>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
