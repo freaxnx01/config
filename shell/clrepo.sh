@@ -1160,6 +1160,7 @@ for n in sorted(keys, key=int):
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Print Remote Control status table. For each occupied slot, look up the
 # Claude session record under $CLAUDE_CONFIG_DIR/sessions/<pid>.json and
 # extract `bridgeSessionId` — the RC session id rendered as
@@ -1341,6 +1342,64 @@ _clrepo_doctor() {
   printf '\nSummary: %d passed, %d failed\n' "$pass" "$fail"
   [ "$fail" = 0 ]
 >>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
+=======
+# Print git worktree/dirty/ahead status across all local repos under
+# $_CLREPO_BASE. One row per repo, plus one indented row per linked
+# worktree (other than the main one) so all in-progress work is visible
+# at a glance.
+_clrepo_worktree_status() {
+  local repos
+  repos=$(find "$_CLREPO_BASE" -type d -name '_archive' -prune \
+                  -o -type d -name .git -printf '%h\n' 2>/dev/null \
+            | sort)
+  if [ -z "$repos" ]; then
+    echo "clrepo: no repos found under $_CLREPO_BASE" >&2
+    return 1
+  fi
+
+  printf '%-32s %-22s %-6s %-6s %s\n' "REPO" "BRANCH" "DIRTY" "AHEAD" "WORKTREES"
+  printf -- '-%.0s' {1..95}; printf '\n'
+
+  local total=0 dirty=0 ahead=0 wt_count=0
+  while IFS= read -r repo; do
+    [ -z "$repo" ] && continue
+    total=$((total + 1))
+    local rel="${repo#$_CLREPO_BASE/}"
+    local short
+    short=$(basename "$rel")
+
+    local branch
+    branch=$(git -C "$repo" symbolic-ref --quiet --short HEAD 2>/dev/null) \
+      || branch="($(git -C "$repo" rev-parse --short HEAD 2>/dev/null || echo 'detached'))"
+
+    local d='no'
+    if [ -n "$(git -C "$repo" status --porcelain 2>/dev/null)" ]; then
+      d='yes'; dirty=$((dirty + 1))
+    fi
+
+    local upstream a='—'
+    upstream=$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)
+    if [ -n "$upstream" ]; then
+      a=$(git -C "$repo" rev-list --count "$upstream..HEAD" 2>/dev/null || echo '?')
+      if [ "$a" != '0' ] && [ "$a" != '?' ]; then
+        ahead=$((ahead + 1))
+      fi
+    fi
+
+    local worktrees
+    worktrees=$(git -C "$repo" worktree list --porcelain 2>/dev/null \
+                  | awk '/^worktree / {print $2}' \
+                  | grep -vxF "$repo" \
+                  | xargs -r -n1 basename \
+                  | paste -sd ',' -)
+    [ -z "$worktrees" ] && worktrees='—' || wt_count=$((wt_count + 1))
+
+    printf '%-32s %-22s %-6s %-6s %s\n' "$short" "$branch" "$d" "$a" "$worktrees"
+  done <<< "$repos"
+
+  printf '\n%d repos · %d dirty · %d ahead · %d with extra worktrees\n' \
+    "$total" "$dirty" "$ahead" "$wt_count"
+>>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
 }
 
 # Pick a live tmux-backed session via fzf and reattach. Reads slots.json
@@ -1727,10 +1786,14 @@ clrepo() {
       -a|--attach)    mode_attach=1; shift ;;
       --status)       _clrepo_slot_status; return ;;
 <<<<<<< HEAD
+<<<<<<< HEAD
       --status-rc)    _clrepo_slot_status_rc; return ;;
 =======
       --doctor)       _clrepo_doctor; return ;;
 >>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
+=======
+      --worktree-status|--ws) _clrepo_worktree_status; return ;;
+>>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
       --free)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
@@ -1774,10 +1837,16 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   -a, --attach          fzf picker over live sessions; reattach to selection
   --status              show slot status table
 <<<<<<< HEAD
+<<<<<<< HEAD
   --status-rc           show Remote Control URL per occupied slot
 =======
   --doctor              diagnose forge targets (direnv, tokens, API access)
 >>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
+=======
+  --worktree-status, --ws
+                        show git status per local repo (branch, dirty,
+                        ahead, extra worktrees)
+>>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
   --free N              force-free slot N (escape hatch)
 In picker:
   Enter   launch (cloning first if remote)
@@ -1988,10 +2057,14 @@ _clrepo() {
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
 <<<<<<< HEAD
+<<<<<<< HEAD
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --free -a --attach -V --version -h --help"
 =======
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --doctor --free -a --attach -V --version -h --help"
 >>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
+=======
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --worktree-status --ws --free -a --attach -V --version -h --help"
+>>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
