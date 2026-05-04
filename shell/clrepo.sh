@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.15.1"
+_CLREPO_VERSION="1.15.2"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1152,6 +1152,70 @@ for n in sorted(keys, key=int):
     else:
         print(f's{n:<4} {\"—\":<30} {\"—\":<15} {\"—\":<20} {\"—\":<8} {bot} {has_token}')
 " 2>/dev/null
+}
+
+# Pick a live tmux-backed session via fzf and reattach. Reads slots.json
+# (same source as --status), filters to records with a non-empty `session`
+# field. 0 live → error, 1 live → auto-attach (no picker), 2+ → fzf.
+# Foreground-mode records (no `session` field) are not attachable and are
+# excluded. Standalone — no other flags, no positional args (validated by
+# the caller in clrepo()).
+_clrepo_attach_pick() {
+  _clrepo_slots_init
+  _clrepo_reconcile_slots
+
+  # Emit one TSV row per live, tmux-backed slot:
+  #   <slot>\t<repo>\t<worktree-or-empty>\t<age>\t<session>
+  local rows
+  rows=$(python3 -c "
+import json, time
+with open('$_CLREPO_SLOTS_FILE') as f: d = json.load(f)
+slots = d.get('slots', {})
+now = int(time.time())
+out = []
+for k in sorted(slots.keys(), key=lambda s: int(s) if s.isdigit() else 999):
+    v = slots.get(k)
+    if not v: continue
+    sess = v.get('session') or ''
+    if not sess: continue  # foreground-mode: not attachable
+    repo = v.get('repo', '')
+    wt = v.get('worktree') or ''
+    sa = v.get('started_at', 0)
+    age = now - sa if sa else 0
+    h, m = divmod(age // 60, 60)
+    age_s = f'{h}h{m:02d}m' if sa else '—'
+    out.append('\t'.join([k, repo, wt, age_s, sess]))
+print('\n'.join(out))
+" 2>/dev/null)
+
+  # Strip a trailing-only newline from python's print so wc -l on empty is 0.
+  local count=0
+  [ -n "$rows" ] && count=$(printf '%s\n' "$rows" | grep -c .)
+
+  if [ "$count" = 0 ]; then
+    echo "clrepo: no live sessions" >&2
+    return 1
+  fi
+
+  local session
+  if [ "$count" = 1 ]; then
+    # Single live session: auto-attach, no picker.
+    session=$(printf '%s' "$rows" | awk -F'\t' '{print $5; exit}')
+  else
+    # 2+ live: fzf picker. Display column is human-formatted; the exact
+    # session name rides along as a trailing tab-separated field for
+    # unambiguous extraction (same trick as the meta-search picker).
+    local out
+    out=$(printf '%s\n' "$rows" \
+      | awk -F'\t' 'BEGIN{OFS=""} { wt = ($3=="" ? "—" : $3); \
+          printf "s%-3s %-30s %-10s %-12s\t%s\n", $1, $2, wt, $4, $5 }' \
+      | fzf --height=40% --reverse --prompt='session> ' \
+            -d $'\t' --with-nth=1) || return
+    session=$(printf '%s' "$out" | awk -F'\t' '{print $2}')
+  fi
+
+  [ -z "$session" ] && return
+  tmux attach-session -t "$session"
 }
 
 _clrepo_print_last() {
