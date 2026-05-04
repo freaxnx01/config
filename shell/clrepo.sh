@@ -1071,9 +1071,10 @@ except Exception:
     >/dev/null 2>&1 || true
 }
 
-# Idempotently merge the Notification + UserPromptSubmit hooks into slot $1's
-# settings.json (~/.claude-s<N>/settings.json). The hook commands include the
-# slot number as a positional arg so the hook scripts know which slot fired.
+# Idempotently merge the Notification + UserPromptSubmit + SessionStart
+# (matcher: clear) hooks into slot $1's settings.json
+# (~/.claude-s<N>/settings.json). The hook commands include the slot
+# number as a positional arg so the hook scripts know which slot fired.
 _clrepo_install_hooks() {
   local slot="$1"
   [ -z "$slot" ] && return 1
@@ -1081,9 +1082,11 @@ _clrepo_install_hooks() {
   local cfg="$cfg_dir/settings.json"
   local notify="$_CLREPO_DIR/clrepo-hooks/notify.sh"
   local clear="$_CLREPO_DIR/clrepo-hooks/clear-idle.sh"
+  local relabel="$_CLREPO_DIR/clrepo-hooks/relabel.sh"
 
-  [ -x "$notify" ] || chmod +x "$notify" 2>/dev/null
-  [ -x "$clear" ]  || chmod +x "$clear"  2>/dev/null
+  [ -x "$notify" ]  || chmod +x "$notify"  2>/dev/null
+  [ -x "$clear" ]   || chmod +x "$clear"   2>/dev/null
+  [ -x "$relabel" ] || chmod +x "$relabel" 2>/dev/null
 
   mkdir -p "$cfg_dir" "$_CLREPO_CACHE"
   exec {_lock_fd}>"$_CLREPO_CACHE/hooks.lock"
@@ -1091,8 +1094,9 @@ _clrepo_install_hooks() {
   python3 -c "
 import json, os
 cfg = '$cfg'
-notify_cmd = '$notify $slot'
-clear_cmd  = '$clear $slot'
+notify_cmd  = '$notify $slot'
+clear_cmd   = '$clear $slot'
+relabel_cmd = '$relabel $slot'
 
 try:
     with open(cfg) as f: d = json.load(f)
@@ -1111,17 +1115,44 @@ def has_cmd(entries, cmd):
             if h.get('command') == cmd: return True
     return False
 
-def add_cmd(key, cmd):
+def add_cmd(key, cmd, matcher=''):
     entries = hooks.setdefault(key, [])
     if has_cmd(entries, cmd): return
-    entries.append({'matcher': '', 'hooks': [{'type': 'command', 'command': cmd}]})
+    entries.append({'matcher': matcher, 'hooks': [{'type': 'command', 'command': cmd}]})
 
 add_cmd('Notification',      notify_cmd)
 add_cmd('UserPromptSubmit',  clear_cmd)
+add_cmd('SessionStart',      relabel_cmd, matcher='clear')
 
 with open(cfg, 'w') as f: json.dump(d, f, indent=2)
 " 2>/dev/null
   flock -u "$_lock_fd"
+}
+
+# Wire slot 0 (admin) for the SessionStart-clear hook + label restore:
+#   1. write the label to ~/.claude-s0/clrepo-label so the relabel hook
+#      can read it.
+#   2. install the same hook bundle clrepo installs for slots 1..N
+#      (Notification, UserPromptSubmit, SessionStart-clear).
+#
+# Slot 0 is launched manually by the user (BotFather-named bot, no
+# clrepo allocation), so this setup has no other entry point. Run once
+# after picking a label, then again only if you want to change it.
+# Args: $1 = display label (e.g. "Claude Admin")
+_clrepo_setup_admin() {
+  local label="${1:-}"
+  if [ -z "$label" ]; then
+    echo "clrepo: --setup-admin requires a label, e.g. \`clrepo --setup-admin 'Claude Admin'\`" >&2
+    return 2
+  fi
+  local cfg_dir="$HOME/.claude-s0"
+  mkdir -p "$cfg_dir" || { echo "clrepo: failed to create $cfg_dir" >&2; return 1; }
+  printf '%s\n' "$label" > "$cfg_dir/clrepo-label" || return 1
+  _clrepo_install_hooks 0 || return 1
+  echo "clrepo: admin (slot 0) wired"
+  echo "  label file: $cfg_dir/clrepo-label"
+  echo "  hooks:      $cfg_dir/settings.json (Notification, UserPromptSubmit, SessionStart[clear])"
+  echo "  on /clear   the SessionStart hook will ask Claude to restore the label via /rename"
 }
 
 # Start the usage-limit watcher daemon if not already running. Idempotent.
@@ -1780,6 +1811,11 @@ _clrepo_launch() {
   export CLAUDE_CONFIG_DIR="$HOME/.claude-s${_SLOT}"
   export TELEGRAM_BOT_TOKEN="$_SLOT_TOKEN"
 
+  # Persist the display name so the SessionStart-clear hook can reapply
+  # it via `/rename` after `/clear` wipes the title (issue #20).
+  mkdir -p "$CLAUDE_CONFIG_DIR" 2>/dev/null
+  printf '%s\n' "$display_name" > "$CLAUDE_CONFIG_DIR/clrepo-label" 2>/dev/null
+
   echo "clrepo: using slot s${_SLOT} (CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR)" >&2
   _clrepo_slot_creds_check "$_SLOT"
 
@@ -1949,6 +1985,7 @@ clrepo() {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       --status-rc)    _clrepo_slot_status_rc; return ;;
 =======
       --doctor)       _clrepo_doctor; return ;;
@@ -1959,6 +1996,11 @@ clrepo() {
 =======
       --issues)       _clrepo_issues; return ;;
 >>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
+=======
+      --setup-admin)
+        [ -z "${2:-}" ] && { echo "clrepo: $1 requires a label" >&2; return 2; }
+        _clrepo_setup_admin "$2"; return ;;
+>>>>>>> e58379a (feat(clrepo): restore session label after /clear (closes #20))
       --free)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
@@ -2004,6 +2046,7 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   --status-rc           show Remote Control URL per occupied slot
 =======
   --doctor              diagnose forge targets (direnv, tokens, API access)
@@ -2016,6 +2059,9 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
 =======
   --issues              list open issues across GitHub + Forgejo forges
 >>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
+=======
+  --setup-admin LABEL   wire slot 0 (admin) for label-restore hook
+>>>>>>> e58379a (feat(clrepo): restore session label after /clear (closes #20))
   --free N              force-free slot N (escape hatch)
 In picker:
   Enter   launch (cloning first if remote)
@@ -2228,6 +2274,7 @@ _clrepo() {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --free -a --attach -V --version -h --help"
 =======
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --doctor --free -a --attach -V --version -h --help"
@@ -2238,6 +2285,9 @@ _clrepo() {
 =======
     local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --issues --free -a --attach -V --version -h --help"
 >>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
+=======
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --setup-admin --free -a --attach -V --version -h --help"
+>>>>>>> e58379a (feat(clrepo): restore session label after /clear (closes #20))
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
