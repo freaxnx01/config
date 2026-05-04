@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.16.0"
+_CLREPO_VERSION="1.16.1"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1128,7 +1128,10 @@ try:
 except: pass
 slots = d.get('slots', {})
 MAX = $_CLREPO_MAX_SLOTS
-keys = set(slots.keys()) | set(tokens.keys()) | {str(n) for n in range(1, MAX + 1)}
+# Slot 0 is the admin/bot 0 row — manually managed (BotFather + optional
+# Claude session in ~/.claude-s0). Include it unconditionally so the user
+# can see whether it's active. Slots 1..MAX are clrepo-allocated.
+keys = set(slots.keys()) | set(tokens.keys()) | {str(n) for n in range(0, MAX + 1)}
 # Drop non-numeric / out-of-range keys defensively, in case stale entries
 # slipped past reconcile (live records aren't pruned there).
 keys = {k for k in keys if k.isdigit() and 0 <= int(k) <= MAX}
@@ -1138,7 +1141,9 @@ print('-' * 95)
 for n in sorted(keys, key=int):
     v = slots.get(n)
     pb = tokens.get(n, '')
-    bot = f'@claude_freax_s{n}_bot'
+    # Slots 1..N follow @claude_freax_sN_bot convention; slot 0 is the
+    # admin bot (BotFather-named, opaque here) so we just label it.
+    bot = '(admin bot)' if int(n) == 0 else f'@claude_freax_s{n}_bot'
     has_token = '✓' if pb else '—'
     if v:
         repo = v.get('repo', '—')
