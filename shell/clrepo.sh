@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.13.4"
+_CLREPO_VERSION="1.13.5"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1055,8 +1055,10 @@ _clrepo_slot_status() {
   python3 -c "
 import json, os, subprocess
 f = '$_CLREPO_SLOTS_FILE'
+MAX = $_CLREPO_MAX_SLOTS
 with open(f) as fh: d = json.load(fh)
-for k, v in list(d.get('slots', {}).items()):
+slots = d.setdefault('slots', {})
+for k, v in list(slots.items()):
     if not v: continue
     sess = v.get('session') or ''
     if sess:
@@ -1068,7 +1070,15 @@ for k, v in list(d.get('slots', {}).items()):
         except (ProcessLookupError, ValueError): alive = False
         except PermissionError: alive = True
     if not alive:
-        d['slots'][k] = None
+        slots[k] = None
+# Drop empty entries whose key isn't a valid slot number (non-numeric, negative,
+# or > MAX_SLOTS) — leftover from manual edits or shrunk MAX. Live entries are
+# preserved so we never orphan a running session's record.
+for k in list(slots.keys()):
+    if slots[k] is not None: continue
+    try: n = int(k)
+    except ValueError: del slots[k]; continue
+    if n < 0 or n > MAX: del slots[k]
 with open(f, 'w') as fh: json.dump(d, fh, indent=2)
 " 2>/dev/null
 
@@ -1080,7 +1090,11 @@ try:
     with open('$_CLREPO_SLOT_TOKENS') as f: tokens = json.load(f)
 except: pass
 slots = d.get('slots', {})
-keys = set(slots.keys()) | set(tokens.keys()) | {str(n) for n in range(1, $_CLREPO_MAX_SLOTS + 1)}
+MAX = $_CLREPO_MAX_SLOTS
+keys = set(slots.keys()) | set(tokens.keys()) | {str(n) for n in range(1, MAX + 1)}
+# Drop non-numeric / out-of-range keys defensively, in case stale entries
+# slipped past reconcile (live records aren't pruned there).
+keys = {k for k in keys if k.isdigit() and 0 <= int(k) <= MAX}
 now = int(time.time())
 print(f\"{'SLOT':<5} {'REPO':<30} {'WORKTREE':<15} {'STARTED':<20} {'PID':<8} {'BOT'}\")
 print('-' * 95)
