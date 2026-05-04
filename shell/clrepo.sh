@@ -765,6 +765,9 @@ with open(f, 'w') as fh: json.dump(d, fh, indent=2)
   # Start the usage-limit watcher AFTER slots.json is updated so its first
   # poll sees this new slot (otherwise it self-exits during Telegram setup).
   _clrepo_watcher_start
+
+  # Refresh admin bot title to reflect new aggregate state.
+  _clrepo_admin_status_update
 }
 
 # Free a slot in slots.json
@@ -784,6 +787,9 @@ with open(f, 'w') as fh: json.dump(d, fh, indent=2)
   # Clean up presence-page markers for this slot
   rm -f "$_CLREPO_CACHE/sessions/${slot}.idle-since" \
         "$_CLREPO_CACHE/sessions/${slot}.limit-paged" 2>/dev/null
+
+  # Refresh admin bot title to reflect new aggregate state.
+  _clrepo_admin_status_update
 }
 
 # Sanity-check the slot's OAuth credentials before launch so the user sees
@@ -861,6 +867,60 @@ print(d.get('telegram_user_id', ''))
       -H "Content-Type: application/json" \
       -d "$(printf '{"chat_id":"%s","message_id":%s,"disable_notification":true}' "$owner_id" "$msg_id")" >/dev/null 2>&1 || true
   fi
+}
+
+# Refresh admin bot (#0) title to mirror aggregate slot status:
+#   - K of N occupied  → "#0 Claude · K/N active"
+#   - all free         → "#0 Claude · idle"
+# Looks up the admin bot token via slot-tokens.json key "0" (resolved
+# through Passbolt). No-op if slot 0 isn't configured. Best-effort —
+# any error path returns 0 so the caller is never blocked.
+#
+# Telegram caps setMyName at ~2/min; this fires from each slot
+# allocation/free, which in normal use is well under the cap. If a
+# burst occurs (e.g. multiple sessions closing at once) Telegram will
+# 429 and the title will catch up on the next event.
+_clrepo_admin_status_update() {
+  local pb_id token
+  [ -f "$_CLREPO_SLOT_TOKENS" ] || return 0
+  pb_id=$(python3 -c "
+import json
+try:
+    with open('$_CLREPO_SLOT_TOKENS') as f: d = json.load(f)
+    print(d.get('0', ''))
+except Exception:
+    pass
+" 2>/dev/null)
+  [ -z "$pb_id" ] && return 0
+
+  token=$(passbolt get resource --id "$pb_id" 2>/dev/null \
+            | awk -F": " '/^Password:/ {print $2}')
+  [ -z "$token" ] && return 0
+
+  local title
+  title=$(python3 -c "
+import json
+try:
+    with open('$_CLREPO_SLOTS_FILE') as f: d = json.load(f)
+    slots = d.get('slots', {})
+    MAX = $_CLREPO_MAX_SLOTS
+    busy = sum(1 for k, v in slots.items()
+               if v and k.isdigit() and 1 <= int(k) <= MAX)
+    if busy == 0:
+        print(f'#0 Claude · idle')
+    else:
+        print(f'#0 Claude · {busy}/{MAX} active')
+except Exception:
+    print('#0 Claude · idle')
+" 2>/dev/null)
+  [ -z "$title" ] && return 0
+  # Telegram setMyName accepts up to 64 chars.
+  title="${title:0:64}"
+
+  curl -sf -X POST "https://api.telegram.org/bot${token}/setMyName" \
+    -H "Content-Type: application/json" \
+    -d "$(python3 -c "import json,sys; print(json.dumps({'name': sys.argv[1]}))" "$title")" \
+    >/dev/null 2>&1 || true
 }
 
 # Best-effort cleanup: reset bot name, send close message.
