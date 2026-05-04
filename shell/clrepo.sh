@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.16.1"
+_CLREPO_VERSION="1.17.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1159,6 +1159,63 @@ for n in sorted(keys, key=int):
 " 2>/dev/null
 }
 
+# Print Remote Control status table. For each occupied slot, look up the
+# Claude session record under $CLAUDE_CONFIG_DIR/sessions/<pid>.json and
+# extract `bridgeSessionId` — the RC session id rendered as
+# https://claude.ai/code/<bridgeSessionId>. Empty bridge id means RC is
+# inactive for that session (e.g. launched with --no-rc).
+_clrepo_slot_status_rc() {
+  _clrepo_slots_init
+  _clrepo_reconcile_slots
+
+  python3 -c "
+import json, os, time
+with open('$_CLREPO_SLOTS_FILE') as f: d = json.load(f)
+slots = d.get('slots', {})
+MAX = $_CLREPO_MAX_SLOTS
+keys = set(slots.keys()) | {str(n) for n in range(0, MAX + 1)}
+keys = {k for k in keys if k.isdigit() and 0 <= int(k) <= MAX}
+now = int(time.time())
+
+def bridge_for(slot, pid):
+    # CLAUDE_CONFIG_DIR for slot 0 is ~/.claude-s0 (admin) by convention.
+    cfg = os.path.expanduser(f'~/.claude-s{slot}')
+    sess_dir = os.path.join(cfg, 'sessions')
+    if not pid or not os.path.isdir(sess_dir): return ''
+    p = os.path.join(sess_dir, f'{pid}.json')
+    if not os.path.isfile(p): return ''
+    try:
+        with open(p) as fh: sd = json.load(fh)
+        return sd.get('bridgeSessionId') or ''
+    except Exception:
+        return ''
+
+print(f\"{'SLOT':<5} {'REPO':<30} {'STARTED':<14} {'RC':<10} {'URL'}\")
+print('-' * 110)
+for n in sorted(keys, key=int):
+    v = slots.get(n)
+    if not v:
+        print(f's{n:<4} {\"—\":<30} {\"—\":<14} {\"—\":<10} —')
+        continue
+    repo = v.get('repo', '—')
+    wt   = v.get('worktree') or ''
+    if wt: repo = f'{repo} [{wt}]'
+    pid  = v.get('pid', 0)
+    sa   = v.get('started_at', 0)
+    age  = now - sa if sa else 0
+    h, m = divmod(age // 60, 60)
+    started = f'{h}h{m:02d}m ago' if sa else '—'
+    bridge = bridge_for(n, pid)
+    if bridge:
+        url = f'https://claude.ai/code/{bridge}'
+        rc = 'active'
+    else:
+        url = '—'
+        rc = 'inactive'
+    print(f's{n:<4} {repo:<30} {started:<14} {rc:<10} {url}')
+" 2>/dev/null
+}
+
 # Pick a live tmux-backed session via fzf and reattach. Reads slots.json
 # (same source as --status), filters to records with a non-empty `session`
 # field. 0 live → error, 1 live → auto-attach (no picker), 2+ → fzf.
@@ -1542,6 +1599,7 @@ clrepo() {
         _CLREPO_FORCED_SLOT="$2"; shift 2 ;;
       -a|--attach)    mode_attach=1; shift ;;
       --status)       _clrepo_slot_status; return ;;
+      --status-rc)    _clrepo_slot_status_rc; return ;;
       --free)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
@@ -1584,6 +1642,7 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   --no-sync             skip the upstream fast-forward pull on startup
   -a, --attach          fzf picker over live sessions; reattach to selection
   --status              show slot status table
+  --status-rc           show Remote Control URL per occupied slot
   --free N              force-free slot N (escape hatch)
 In picker:
   Enter   launch (cloning first if remote)
@@ -1793,7 +1852,7 @@ _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --free -a --attach -V --version -h --help"
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --free -a --attach -V --version -h --help"
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
