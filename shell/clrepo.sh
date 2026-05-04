@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.13.5"
+_CLREPO_VERSION="1.14.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1189,8 +1189,13 @@ _clrepo_launch() {
   { printf '%s
 ' "$sel"; grep -vxF "$sel" "$mru" 2>/dev/null; } | head -10 > "$mru.tmp" && mv "$mru.tmp" "$mru"
 
-  local repo
+  local repo display_name
   repo=$(basename "$sel")
+  # Distinguish worktree sessions in `-n` so the prompt box, terminal title,
+  # and /resume picker can tell `repo` and `repo -w doc` apart. Matches the
+  # Telegram bot title format set in _clrepo_telegram_setup.
+  display_name="$repo"
+  [ -n "$worktree" ] && display_name="$repo [$worktree]"
 
   local _remote_url _session_path
   _remote_url=$(git remote get-url origin 2>/dev/null || echo '(no remote)')
@@ -1241,7 +1246,7 @@ _clrepo_launch() {
   if [ "${_CLREPO_NO_CHANNEL:-0}" = 1 ]; then
     # User opted out: no slot, no Telegram, shared CLAUDE_CONFIG_DIR (~/.claude).
     echo "clrepo: --no-channel set: no slot, no Telegram, shared ~/.claude." >&2
-    local -a claude_args=(-n "$repo")
+    local -a claude_args=(-n "$display_name")
     [ -n "$worktree" ] && claude_args+=(--worktree "$worktree")
     [ "$remote_control" = 1 ] && claude_args+=(--remote-control)
     if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
@@ -1258,7 +1263,7 @@ _clrepo_launch() {
   # Allocate a slot (auto-inits slots.json on first use)
   _clrepo_slot_allocate "${_CLREPO_FORCED_SLOT:-}" || return
 
-  local -a claude_args=(-n "$repo" --dangerously-skip-permissions --channels plugin:telegram@claude-plugins-official)
+  local -a claude_args=(-n "$display_name" --dangerously-skip-permissions --channels plugin:telegram@claude-plugins-official)
   [ -n "$worktree" ] && claude_args+=(--worktree "$worktree")
   [ "$remote_control" = 1 ] && claude_args+=(--remote-control)
 
