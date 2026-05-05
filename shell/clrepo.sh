@@ -1129,7 +1129,6 @@ with open(cfg, 'w') as f: json.dump(d, f, indent=2)
   flock -u "$_lock_fd"
 }
 
-<<<<<<< HEAD
 # Wire slot 0 (admin) for the SessionStart-clear hook + label restore:
 #   1. write the label to ~/.claude-s0/clrepo-label so the relabel hook
 #      can read it.
@@ -1154,7 +1153,8 @@ _clrepo_setup_admin() {
   echo "  label file: $cfg_dir/clrepo-label"
   echo "  hooks:      $cfg_dir/settings.json (Notification, UserPromptSubmit, SessionStart[clear])"
   echo "  on /clear   the SessionStart hook will ask Claude to restore the label via /rename"
-=======
+}
+
 # Symlink the admin slash-command markdown files from
 # `clrepo-admin-commands/` into ~/.claude-s0/commands/. Slot 0 is the
 # admin Claude session (manually launched, BotFather-named bot); these
@@ -1192,7 +1192,6 @@ _clrepo_install_admin_commands() {
     [ -f "$f" ] || continue
     printf '    /%s\n' "$(basename "$f" .md)"
   done
->>>>>>> 799a057 (feat(clrepo): add admin slash commands for slot 0 (closes #10))
 }
 
 # Start the usage-limit watcher daemon if not already running. Idempotent.
@@ -1290,9 +1289,6 @@ for n in sorted(keys, key=int):
 " 2>/dev/null
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 # Print Remote Control status table. For each occupied slot, look up the
 # Claude session record under $CLAUDE_CONFIG_DIR/sessions/<pid>.json and
 # extract `bridgeSessionId` — the RC session id rendered as
@@ -1348,23 +1344,13 @@ for n in sorted(keys, key=int):
         rc = 'inactive'
     print(f's{n:<4} {repo:<30} {started:<14} {rc:<10} {url}')
 " 2>/dev/null
-=======
+}
+
 # Diagnose forge targets: list each, verify direnv exports the expected
 # token, and test access by calling the forge's `/user` (or equivalent)
 # endpoint. Prints one block per target with ✓/✗ markers and a final
 # summary. Returns 0 if all checks passed, 1 otherwise.
 _clrepo_doctor() {
-=======
-# Aggregate open issues across configured GitHub + Forgejo forges into
-# a single overview. Iterates discovered forge targets, dedupes by
-# (forge, owner), and queries each forge's "issues across owned repos"
-# endpoint:
-#   - github  → /search/issues?q=is:issue+is:open+user:<owner>
-#   - forgejo → /repos/issues/search?state=open&type=issues&owner=<owner>
-# GitLab/ADO are skipped (different issue/work-item models, out of scope
-# for the `claude-ready` / `claude-working` workflow this command serves).
-_clrepo_issues() {
->>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
   local targets
   targets=$(_clrepo_targets)
   if [ -z "$targets" ]; then
@@ -1372,7 +1358,6 @@ _clrepo_issues() {
     return 1
   fi
 
-<<<<<<< HEAD
   local pass=0 fail=0
   while IFS=$'\t' read -r rel forge owner vis; do
     [ -z "$rel" ] && continue
@@ -1485,8 +1470,8 @@ _clrepo_issues() {
 
   printf '\nSummary: %d passed, %d failed\n' "$pass" "$fail"
   [ "$fail" = 0 ]
->>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
-=======
+}
+
 # Print git worktree/dirty/ahead status across all local repos under
 # $_CLREPO_BASE. One row per repo, plus one indented row per linked
 # worktree (other than the main one) so all in-progress work is visible
@@ -1543,8 +1528,24 @@ _clrepo_worktree_status() {
 
   printf '\n%d repos · %d dirty · %d ahead · %d with extra worktrees\n' \
     "$total" "$dirty" "$ahead" "$wt_count"
->>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
-=======
+}
+
+# Aggregate open issues across configured GitHub + Forgejo forges into
+# a single overview. Iterates discovered forge targets, dedupes by
+# (forge, owner), and queries each forge's "issues across owned repos"
+# endpoint:
+#   - github  → /search/issues?q=is:issue+is:open+user:<owner>
+#   - forgejo → /repos/issues/search?state=open&type=issues&owner=<owner>
+# GitLab/ADO are skipped (different issue/work-item models, out of scope
+# for the `claude-ready` / `claude-working` workflow this command serves).
+_clrepo_issues() {
+  local targets
+  targets=$(_clrepo_targets)
+  if [ -z "$targets" ]; then
+    echo "clrepo: no forge targets discovered under $_CLREPO_BASE" >&2
+    return 1
+  fi
+
   # Dedupe by (forge, owner) — public/private subdirs share a token.
   # Pick the first matching rel for each pair (used as the cd target so
   # direnv can load the credentials).
@@ -1631,7 +1632,6 @@ _clrepo_worktree_status() {
       printf "\n%d open issue%s\n", n, (n == 1 ? "" : "s")
     }
   '
->>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
 }
 
 # Pick a live tmux-backed session via fzf and reattach. Reads slots.json
@@ -2022,29 +2022,14 @@ clrepo() {
         _CLREPO_FORCED_SLOT="$2"; shift 2 ;;
       -a|--attach)    mode_attach=1; shift ;;
       --status)       _clrepo_slot_status; return ;;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
       --status-rc)    _clrepo_slot_status_rc; return ;;
-=======
       --doctor)       _clrepo_doctor; return ;;
->>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
-=======
       --worktree-status|--ws) _clrepo_worktree_status; return ;;
->>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
-=======
       --issues)       _clrepo_issues; return ;;
->>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
-=======
       --setup-admin)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a label" >&2; return 2; }
         _clrepo_setup_admin "$2"; return ;;
->>>>>>> e58379a (feat(clrepo): restore session label after /clear (closes #20))
-=======
       --install-admin-commands) _clrepo_install_admin_commands; return ;;
->>>>>>> 799a057 (feat(clrepo): add admin slash commands for slot 0 (closes #10))
       --free)
         [ -z "${2:-}" ] && { echo "clrepo: $1 requires a slot number" >&2; return 2; }
         _clrepo_slot_free "$2"; echo "clrepo: slot $2 freed"; return ;;
@@ -2087,30 +2072,15 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   --no-sync             skip the upstream fast-forward pull on startup
   -a, --attach          fzf picker over live sessions; reattach to selection
   --status              show slot status table
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
   --status-rc           show Remote Control URL per occupied slot
-=======
   --doctor              diagnose forge targets (direnv, tokens, API access)
->>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
-=======
   --worktree-status, --ws
                         show git status per local repo (branch, dirty,
                         ahead, extra worktrees)
->>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
-=======
   --issues              list open issues across GitHub + Forgejo forges
->>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
-=======
   --setup-admin LABEL   wire slot 0 (admin) for label-restore hook
->>>>>>> e58379a (feat(clrepo): restore session label after /clear (closes #20))
-=======
   --install-admin-commands
                         symlink admin slash commands into ~/.claude-s0/commands/
->>>>>>> 799a057 (feat(clrepo): add admin slash commands for slot 0 (closes #10))
   --free N              force-free slot N (escape hatch)
 In picker:
   Enter   launch (cloning first if remote)
@@ -2320,27 +2290,7 @@ _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --free -a --attach -V --version -h --help"
-=======
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --doctor --free -a --attach -V --version -h --help"
->>>>>>> 6c0ae56 (feat(clrepo): add --doctor diagnostics (closes #5))
-=======
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --worktree-status --ws --free -a --attach -V --version -h --help"
->>>>>>> 61d44fc (feat(clrepo): add --worktree-status (--ws) (closes #7))
-=======
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --issues --free -a --attach -V --version -h --help"
->>>>>>> 5a4f1c2 (feat(clrepo): add --issues overview (closes #8))
-=======
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --setup-admin --free -a --attach -V --version -h --help"
->>>>>>> e58379a (feat(clrepo): restore session label after /clear (closes #20))
-=======
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --install-admin-commands --free -a --attach -V --version -h --help"
->>>>>>> 799a057 (feat(clrepo): add admin slash commands for slot 0 (closes #10))
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --doctor --worktree-status --ws --issues --setup-admin --install-admin-commands --free -a --attach -V --version -h --help"
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
