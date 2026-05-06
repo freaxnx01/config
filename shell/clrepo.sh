@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.23.0"
+_CLREPO_VERSION="1.24.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -1823,6 +1823,33 @@ _clrepo_launch() {
     return
   fi
 
+  # OpenCode mode — run `opencode`. Honors -w by cd'ing into the matching
+  # git worktree (lookup by basename in `git worktree list`). Skips slot/Telegram
+  # but keeps the tmux SSH wrap so disconnects don't kill the session.
+  if [ "$editor" = "opencode" ]; then
+    if [ -n "$worktree" ]; then
+      local wt_path=""
+      while IFS= read -r p; do
+        [ "$(basename "$p")" = "$worktree" ] && { wt_path="$p"; break; }
+      done < <(git worktree list --porcelain 2>/dev/null | awk '/^worktree / {print $2}')
+      if [ -z "$wt_path" ]; then
+        echo "clrepo: no worktree named '$worktree' under $sel" >&2
+        return 1
+      fi
+      cd "$wt_path" || return 1
+      printf '%s\n%s\n' "$PWD" "$_remote_url" > "$_CLREPO_CACHE/last"
+    fi
+    if [ -n "${SSH_CONNECTION:-}" ] && command -v tmux >/dev/null; then
+      local session
+      session=$(_clrepo_tmux_session_name "$repo" "$worktree")
+      tmux new-session -A -s "$session" opencode
+    else
+      opencode
+    fi
+    _clrepo_print_last
+    return
+  fi
+
   # --- Slot allocation (skip only with explicit --no-channel) ---
   if [ "${_CLREPO_NO_CHANNEL:-0}" = 1 ]; then
     # User opted out: no slot, no Telegram, shared CLAUDE_CONFIG_DIR (~/.claude).
@@ -2036,6 +2063,7 @@ clrepo() {
       -D|--delete)    mode_delete=1; shift ;;
       -c|--code)      editor=code; shift ;;
       -p|--copilot)   editor=copilot; shift ;;
+      -o|--opencode)  editor=opencode; shift ;;
       --remote-control|--rc) remote_control=1; shift ;;
       --no-remote-control|--no-rc) remote_control=0; shift ;;
       -w|--worktree)
@@ -2058,6 +2086,7 @@ Usage: clrepo [options] [repo-name|.|update|away|back|here|presence]
   -D, --delete          delete a repo (local and/or remote); with <name> or via picker
   -c, --code            open repo in VS Code instead of Claude Code CLI
   -p, --copilot         launch `copilot --yolo` instead of Claude Code CLI
+  -o, --opencode        launch `opencode` instead of Claude Code CLI
       --remote-control, --rc
                         pass `--remote-control` to claude (steer session from
                         claude.ai/code or mobile app); on by default, requires
@@ -2290,7 +2319,7 @@ _clrepo() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   COMPREPLY=()
   if [[ "$cur" == -* ]]; then
-    local flags="-r --remote --refresh -D --delete -c --code -p --copilot --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --doctor --worktree-status --ws --issues --setup-admin --install-admin-commands --free -a --attach -V --version -h --help"
+    local flags="-r --remote --refresh -D --delete -c --code -p --copilot -o --opencode --remote-control --rc -w --worktree --no-sync --no-channel --slot --status --status-rc --doctor --worktree-status --ws --issues --setup-admin --install-admin-commands --free -a --attach -V --version -h --help"
     COMPREPLY=($(compgen -W "$flags" -- "$cur"))
     return
   fi
