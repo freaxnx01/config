@@ -22,7 +22,9 @@ oh-my-posh --version
 cp oh-my-posh/claude-code.omp.json ~/.claude.omp.json
 ```
 
-**2. Add the `statusLine` block to `~/.claude/settings.json`**
+**2. Merge the `statusLine` block into `~/.claude/settings.json`**
+
+The snippet is provided as `oh-my-posh/claude-code-settings.json`. Add the `statusLine` key to your existing settings:
 
 ```json
 {

@@ -1,0 +1,7 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "oh-my-posh claude --config ~/.claude.omp.json",
+    "padding": 0
+  }
+}
