@@ -22,7 +22,7 @@
 # The slot/telegram wrapper (see external spec) can replace _clrepo_launch
 # wholesale without touching the rest of this file.
 
-_CLREPO_VERSION="1.24.0"
+_CLREPO_VERSION="1.25.0"
 
 _CLREPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CLREPO_BASE="${CLREPO_BASE:-$HOME/projects/repos}"
@@ -35,6 +35,9 @@ _CLREPO_RAW_URL="https://raw.githubusercontent.com/freaxnx01/config/main/shell/c
 # Autosync function (opt-in commit & push on session close). Same file is
 # also exec'd from the tmux session-closed hook in script mode.
 [ -f "$_CLREPO_DIR/clrepo-autosync.sh" ] && . "$_CLREPO_DIR/clrepo-autosync.sh"
+
+# Unpushed-commit warning on session exit (always-on, no opt-in required).
+[ -f "$_CLREPO_DIR/clrepo-unpushed-warn.sh" ] && . "$_CLREPO_DIR/clrepo-unpushed-warn.sh"
 
 # User config files (all under $_CLREPO_CONFIG, never committed to the repo):
 #   ado-projects  — one ADO project name per line; limits which projects are
@@ -1905,7 +1908,7 @@ _clrepo_launch() {
     # startup error on attach instead of just `[exited]`. Auto-close on exit 0
     # so the success path stays clean (no dangling pane to dismiss).
     tmux set-option -t "$session" remain-on-exit on
-    tmux set-hook   -t "$session" pane-died       "if-shell -F '#{==:#{pane_dead_status},0}' 'kill-pane'"
+    tmux set-hook   -t "$session" pane-died       "run-shell '$_CLREPO_DIR/clrepo-unpushed-warn.sh $session'; if-shell -F '#{==:#{pane_dead_status},0}' 'kill-pane'"
     # Record repo path so the session-closed hook can find it for autosync.
     mkdir -p "$_CLREPO_CACHE/sessions"
     printf '%s\n' "$PWD" > "$_CLREPO_CACHE/sessions/${session}.path"
@@ -1938,6 +1941,7 @@ _clrepo_launch() {
     _clrepo_telegram_setup "$_SLOT" "$repo" "$worktree" "$_SLOT_TOKEN"
     _clrepo_slot_record "$_SLOT" "$repo" "$worktree" "$$"
     claude "${claude_args[@]}"
+    command -v _clrepo_warn_unpushed >/dev/null && _clrepo_warn_unpushed "$PWD"
     command -v _clrepo_autosync >/dev/null && _clrepo_autosync "$PWD" "$_SLOT_TOKEN"
     _clrepo_slot_free "$_SLOT"
     _clrepo_telegram_cleanup "$_SLOT" "$_SLOT_TOKEN"
