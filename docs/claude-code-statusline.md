@@ -8,10 +8,24 @@ A custom `oh-my-posh` status bar for Claude Code CLI showing git context, model 
 - [oh-my-posh](https://ohmyposh.dev/docs/installation/linux) installed and on `$PATH`
 - A [Nerd Font](https://www.nerdfonts.com/) configured in your terminal
 
-Verify oh-my-posh has Claude segment support (requires v24+):
+Verify oh-my-posh has Claude segment support. The basic `claude` subcommand
+landed in v24, but the `Sess`/`Week` rate-limit segment uses
+`FiveHourUsage` / `SevenDayUsage` which were added later — **v29.13+ is
+required** for that segment to render (it is guarded with `{{ if }}`, so older
+versions still work, the segment just hides).
 
 ```bash
 oh-my-posh --version
+```
+
+If you need to upgrade and the binary is root-owned (e.g. `/usr/local/bin/oh-my-posh`),
+`oh-my-posh upgrade` may silently no-op. Download the release binary manually
+instead:
+
+```bash
+sudo curl -fsSL -o /usr/local/bin/oh-my-posh \
+  https://github.com/JanDeDobbeleer/oh-my-posh/releases/latest/download/posh-linux-amd64
+sudo chmod +x /usr/local/bin/oh-my-posh
 ```
 
 ## Setup

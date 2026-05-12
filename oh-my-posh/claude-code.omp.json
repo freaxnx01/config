@@ -76,7 +76,7 @@
         },
         {
           "leading_diamond": "<background,parentBackground>\ue0b2</>",
-          "template": " Sess {{ .FiveHourUsage.String }}% \u21ba {{ .FiveHourResetsAt | date \"15:04\" }} \u00b7 Week {{ .SevenDayUsage.String }}% \u21ba {{ .SevenDayResetsAt | date \"Jan 2 15:04\" }} ",
+          "template": "{{ if .FiveHourUsage }} Sess {{ .FiveHourUsage.String }}% \u21ba {{ .FiveHourResetsAt | date \"15:04\" }}{{ end }}{{ if .SevenDayUsage }} \u00b7 Week {{ .SevenDayUsage.String }}% \u21ba {{ .SevenDayResetsAt | date \"Jan 2 15:04\" }}{{ end }}{{ if or .FiveHourUsage .SevenDayUsage }} {{ end }}",
           "foreground": "p:white",
           "background": "#49416D",
           "type": "claude",
