@@ -17,9 +17,9 @@
       "alignment": "left",
       "segments": [
         {
-          "template": "  {{ .HostName }} ",
+          "template": " \uf233 {{ .HostName }} ",
           "foreground": "p:white",
-          "leading_diamond": "",
+          "leading_diamond": "\ue0b6",
           "background": "p:black",
           "type": "session",
           "style": "diamond"
@@ -27,12 +27,12 @@
         {
           "options": {
             "dir_length": 3,
-            "folder_separator_icon": "",
+            "folder_separator_icon": "\ue0bb",
             "style": "fish"
           },
-          "template": "{{ if .Segments.Git.Dir }}  <i><b>{{ .Segments.Git.RepoName }}{{ if .Segments.Git.IsWorkTree }} {{ end }}</b></i>{{ $rel := .Segments.Git.RelativeDir }}{{ if $rel }}  {{ .Format $rel }}{{ end }}{{ else }}  {{ path .Path .Location }}{{ end }} ",
+          "template": "{{ if .Segments.Git.Dir }} \uf1d2 <i><b>{{ .Segments.Git.RepoName }}{{ if .Segments.Git.IsWorkTree }} \ue21c{{ end }}</b></i>{{ $rel := .Segments.Git.RelativeDir }}{{ if $rel }} \ueaf7 {{ .Format $rel }}{{ end }}{{ else }} \uea83 {{ path .Path .Location }}{{ end }} ",
           "foreground": "p:white",
-          "leading_diamond": "<parentBackground,background></>",
+          "leading_diamond": "<parentBackground,background>\ue0b0</>",
           "background": "p:orange",
           "type": "path",
           "style": "diamond"
@@ -42,17 +42,17 @@
           "style": "plain",
           "background": "transparent",
           "foreground": "p:orange",
-          "template": "{{ if not .Segments.Git.Dir }}{{ end }}"
+          "template": "{{ if not .Segments.Git.Dir }}\ue0b4{{ end }}"
         },
         {
           "options": {
-            "branch_icon": "",
+            "branch_icon": "\ue0a0",
             "fetch_status": true
           },
-          "template": " {{ if .UpstreamURL }}{{ url .UpstreamIcon .UpstreamURL }} {{ end }}{{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus }}{{ end }}{{ if .Working.Changed }}  {{ nospace .Working.String }}{{ end }}{{ if .Staging.Changed }}  {{ .Staging.String }}{{ end }} ",
+          "template": " {{ if .UpstreamURL }}{{ url .UpstreamIcon .UpstreamURL }} {{ end }}{{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus }}{{ end }}{{ if .Working.Changed }} \uf044 {{ nospace .Working.String }}{{ end }}{{ if .Staging.Changed }} \uf046 {{ .Staging.String }}{{ end }} ",
           "foreground": "p:black",
-          "leading_diamond": "<parentBackground,background></>",
-          "trailing_diamond": "",
+          "leading_diamond": "<parentBackground,background>\ue0b0</>",
+          "trailing_diamond": "\ue0b4",
           "background": "p:green",
           "type": "git",
           "style": "diamond",
@@ -74,25 +74,25 @@
       "alignment": "right",
       "segments": [
         {
-          "leading_diamond": "",
-          "template": " 󰯉 {{ .Model.DisplayName }} ",
+          "leading_diamond": "\ue0b6",
+          "template": " \udb82\udfc9 {{ .Model.DisplayName }} ",
           "foreground": "p:white",
           "background": "p:blue",
           "type": "claude",
           "style": "diamond"
         },
         {
-          "leading_diamond": "<background,parentBackground></>",
-          "template": "  Ctx {{ .FormattedTokens }}{{ if .ContextWindow.ContextWindowSize }}/{{ div .ContextWindow.ContextWindowSize 1000 }}K{{ end }} ({{ .TokenUsagePercent.String }}%) ",
+          "leading_diamond": "<background,parentBackground>\ue0b2</>",
+          "template": " \uf2d0 Ctx {{ .FormattedTokens }}{{ if .ContextWindow.ContextWindowSize }}/{{ div .ContextWindow.ContextWindowSize 1000 }}K{{ end }} ({{ .TokenUsagePercent.String }}%) ",
           "foreground": "p:white",
           "background": "accent",
           "type": "claude",
           "style": "diamond"
         },
         {
-          "leading_diamond": "<background,parentBackground></>",
-          "trailing_diamond": "",
-          "template": "{{ if .FiveHourUsage }} Sess {{ .FiveHourUsage.String }}% ↺ {{ .FiveHourResetsAt | date \"15:04\" }}{{ end }}{{ if .SevenDayUsage }} · Week {{ .SevenDayUsage.String }}% ↺ {{ .SevenDayResetsAt | date \"Jan 2 15:04\" }}{{ end }}{{ if or .FiveHourUsage .SevenDayUsage }} {{ end }}",
+          "leading_diamond": "<background,parentBackground>\ue0b2</>",
+          "trailing_diamond": "\ue0b4",
+          "template": "{{ if .FiveHourUsage }} Sess {{ .FiveHourUsage.String }}% \u21ba {{ .FiveHourResetsAt | date \"15:04\" }}{{ end }}{{ if .SevenDayUsage }} \u00b7 Week {{ .SevenDayUsage.String }}% \u21ba {{ .SevenDayResetsAt | date \"Jan 2 15:04\" }}{{ end }}{{ if or .FiveHourUsage .SevenDayUsage }} {{ end }}",
           "foreground": "p:white",
           "background": "#49416D",
           "type": "claude",
@@ -100,16 +100,16 @@
         },
         {
           "options": {
-            "charged_icon": " ",
-            "charging_icon": " ",
-            "discharging_icon": " "
+            "charged_icon": "\ue22f ",
+            "charging_icon": "\ue234 ",
+            "discharging_icon": "\ue231 "
           },
           "cache": {
             "duration": "10m",
             "strategy": "session"
           },
-          "leading_diamond": "<background,parentBackground></>",
-          "trailing_diamond": "",
+          "leading_diamond": "<background,parentBackground>\ue0b2</>",
+          "trailing_diamond": "\ue0b4",
           "template": "{{ if not .Error }} {{ .Icon }}{{ .Percentage }}%{{ end }}",
           "foreground": "#111111",
           "background": "accent",
