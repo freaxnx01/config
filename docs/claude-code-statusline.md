@@ -78,3 +78,43 @@ Restart Claude Code — the status bar appears at the bottom of every session.
 | Red git background | Diverged from upstream (ahead AND behind) |
 | Purple git background | Ahead of upstream |
 | Dark purple git background | Behind upstream |
+
+## Windows / PowerShell (pwsh)
+
+The theme defines two `prompt` blocks: a **left**-aligned block (path, git) and
+a **right**-aligned block (model, ctx, usage, battery). How those two blocks lay
+out depends on whether oh-my-posh can detect the terminal width when Claude Code
+invokes it.
+
+Claude Code runs the `statusLine` command non-interactively (it pipes JSON to
+the command — there is no real TTY), so width detection differs by platform:
+
+| Platform | Width detection | Result |
+|----------|-----------------|--------|
+| **WSL2 / bash** | No TTY and `COLUMNS` is not exported into the piped process, so width is unknown | The right block can't be pushed to the edge, so both blocks render back-to-back as **one contiguous bar** |
+| **Windows / pwsh** | oh-my-posh queries the Windows console API directly and gets the real column count | The right block is pushed to the right edge, opening a **gap** between the two blocks |
+
+So the "gap" on pwsh is oh-my-posh correctly right-aligning the second block —
+not a bug. WSL just happens to render the contiguous look because it can't
+measure the width.
+
+### Make pwsh match the contiguous (no-gap) look
+
+Change the second block's alignment from `right` to `left` so both blocks chain
+into a single left-aligned powerline regardless of width:
+
+```jsonc
+{
+  "type": "prompt",
+  "alignment": "left",   // was "right"
+  "segments": [ /* model, ctx, usage, battery */ ]
+}
+```
+
+Trade-off: with everything left-aligned, on a narrow terminal the bar runs long
+and truncates on the right instead of staying glued to the edge. At typical
+widths it's just a tidy single bar.
+
+> Note: the live Windows config (`%USERPROFILE%\.claude\claude-code.omp.json`)
+> also adds a leading `session` (hostname) segment that the Linux variant in
+> this repo omits.
