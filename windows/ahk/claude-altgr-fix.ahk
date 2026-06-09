@@ -21,7 +21,10 @@ SetTitleMatchMode("RegEx")
 #HotIf WinActive("ahk_exe (WindowsTerminal|wt|warp|Code|wezterm|alacritty)\.exe")
 
 <^>!2::SendText("@")     ; AltGr+2  -> @   (the important one)
-<^>!3::SendText("#")     ; AltGr+3  -> #
+; AltGr+3 (#) is intentionally NOT remapped: SendText() emits a Unicode packet
+; that espanso's keyboard hook can't see, which broke every espanso trigger
+; ending in '#'. Leaving AltGr+3 untouched lets espanso detect '#' triggers
+; here too. Use Right-Ctrl+3 below for a literal '#' when you actually need one.
 <^>!7::SendText("|")     ; AltGr+7  -> |
 <^>!9::SendText("]")     ; AltGr+9  -> ]
 <^>!0::SendText("}")     ; AltGr+0  -> }
@@ -31,5 +34,6 @@ SetTitleMatchMode("RegEx")
 ; No-AltGr fallback chords (terminal-scoped too):
 >^2::SendText("@")       ; Right Ctrl + 2  -> @
 ^+2::SendText("@")       ; Ctrl + Shift + 2 -> @  (works with either Ctrl)
+>^3::SendText("#")       ; Right Ctrl + 3  -> #  (literal #; AltGr+3 left for espanso)
 
 #HotIf
