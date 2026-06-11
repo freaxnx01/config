@@ -7,6 +7,7 @@ and picks up changes with a `git pull`.
 | File | What it does |
 |------|--------------|
 | [`task-checklist.md`](task-checklist.md) | Makes Claude present action items it hands back to you as `- [ ]` Markdown checkboxes. |
+| [`skill-authoring.md`](skill-authoring.md) | When creating or editing a skill, makes it **self-improving** — appends a "fix blockers and update yourself" instruction to the skill body (plus the don't-be-prescriptive / mention-tools rules). |
 
 ## Setup in a new environment
 
