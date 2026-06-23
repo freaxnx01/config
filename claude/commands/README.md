@@ -8,6 +8,22 @@ for Claude Code. Each `.md` file becomes a `/<filename>` command; the
 |---------|--------------|
 | [`/loose-ends`](loose-ends.md) | Lists anything started but not finished in the session — uncommitted edits, unrun/failing tests, queued commands, open follow-ups. |
 | [`/clear-check`](clear-check.md) | Direct verdict on whether it's **safe to `/clear`** the context now, with a wrap-up checklist if not. |
+| [`/handoff`](handoff.md) | Saves the current spec/plan to an MD file and writes a resume prompt (with the file path) to `.claude/handoff.md` + clipboard, so you can `/clear` and continue cold. |
+| [`/pickup`](pickup.md) | Resumes work saved by `/handoff` — reads `.claude/handoff.md` and continues from where you left off, subagent-driven. |
+| [`/subagent-driven`](subagent-driven.md) | Executes the current implementation plan via `superpowers:subagent-driven-development`. Explicit counterpart to the always-on [`subagent-driven-default`](../subagent-driven-default.md) partial. |
+
+### The `/handoff` → `/clear` → `/pickup` flow
+
+A skill **cannot** run `/clear` or inject a follow-up prompt itself — clearing
+context and starting a new turn are harness actions driven by your keystrokes, not
+by model output. So the phase handoff is two commands with a manual `/clear`
+between them:
+
+1. `/handoff` — persists the artifact, writes `.claude/handoff.md`, copies the
+   resume prompt to your clipboard.
+2. `/clear` — you type this.
+3. `/pickup` — reads `.claude/handoff.md` and continues. (Or just paste the
+   clipboard.)
 
 Unlike the [CLAUDE.md partials](../README.md), slash commands **cannot** be
 `@`-imported — they must physically live in `~/.claude/commands/`. So integration

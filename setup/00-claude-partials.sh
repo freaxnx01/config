@@ -24,6 +24,7 @@ CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 PARTIALS=(
   "~/repos/github/freaxnx01/public/config/claude/task-checklist.md"
   "~/repos/github/freaxnx01/public/config/claude/skill-authoring.md"
+  "~/repos/github/freaxnx01/public/config/claude/subagent-driven-default.md"
 )
 
 BEGIN="<!-- BEGIN provisioned:claude-partials (managed by setup/00-claude-partials.sh) -->"
