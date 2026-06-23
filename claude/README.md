@@ -9,6 +9,9 @@ and picks up changes with a `git pull`.
 | [`task-checklist.md`](task-checklist.md) | Makes Claude present action items it hands back to you as `- [ ]` Markdown checkboxes. |
 | [`skill-authoring.md`](skill-authoring.md) | When creating or editing a skill, makes it **self-improving** — appends a "fix blockers and update yourself" instruction to the skill body (plus the don't-be-prescriptive / mention-tools rules). |
 
+> Looking for **slash commands** (`/loose-ends`, `/clear-check`)? Those live in
+> [`commands/`](commands/) — they're installed via symlink, not `@`-imported.
+
 ## Setup in a new environment
 
 ### Recommended — one command
