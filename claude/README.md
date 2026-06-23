@@ -11,6 +11,25 @@ and picks up changes with a `git pull`.
 
 ## Setup in a new environment
 
+### Recommended — one command
+
+The repo ships an idempotent setup script that clones (or pulls) the repo at the
+canonical path AND maintains an `@`-includes marker block in `~/.claude/CLAUDE.md`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/freaxnx01/config/main/setup/00-claude-partials.sh | bash
+```
+
+(Or, if you've already cloned the repo, run
+`~/repos/github/freaxnx01/public/config/setup/00-claude-partials.sh`.)
+
+It's safe to re-run anytime — same script keeps existing machines current after
+a `git pull` in this repo. It also **migrates** any free-floating `@`-include
+lines for the managed partials into a single marker-bracketed block, so the file
+stays tidy.
+
+### Manual (if you prefer)
+
 1. **Clone this repo** (if not already present) somewhere stable, e.g. under your
    home dir so `~` resolves to it:
 
