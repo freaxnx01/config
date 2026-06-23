@@ -25,6 +25,24 @@ between them:
 3. `/pickup` — reads `.claude/handoff.md` and continues. (Or just paste the
    clipboard.)
 
+**Optional auto-surface hook.** [`../hooks/handoff-resume.sh`](../hooks/handoff-resume.sh)
+is a `SessionStart(clear)` hook: when you `/clear`, it injects `.claude/handoff.md`
+as context automatically, so the resume prompt is already loaded (you just type
+`/pickup` or "go"). Install the script to `~/.claude/hooks/` and add to
+`~/.claude/settings.json`:
+
+```json
+{ "hooks": { "SessionStart": [
+  { "matcher": "clear", "hooks": [
+    { "type": "command", "command": "$HOME/.claude/hooks/handoff-resume.sh" }
+  ] }
+] } }
+```
+
+(Merge into any existing `SessionStart` block — don't replace it.) A command/skill
+cannot run `/clear` or auto-send a prompt itself, so this passive injection is as
+close to "auto-resume" as the harness allows.
+
 Unlike the [CLAUDE.md partials](../README.md), slash commands **cannot** be
 `@`-imported — they must physically live in `~/.claude/commands/`. So integration
 is a symlink (or copy) rather than an import line.
