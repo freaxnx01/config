@@ -7,6 +7,9 @@ autocomplete menu.
 
 ## At a glance
 
+**Meta**
+- `/commands` — list my custom slash commands (user + project), grouped
+
 **Session hygiene**
 - `/loose-ends` — list anything started but unfinished
 - `/clear-check` — verdict on whether it's safe to `/clear`
@@ -33,6 +36,7 @@ Full details below.
 
 | Command | What it does |
 |---------|--------------|
+| [`/commands`](commands.md) | Lists your custom slash commands (user + project), grouped by source and namespace. |
 | [`/loose-ends`](loose-ends.md) | Lists anything started but not finished in the session — uncommitted edits, unrun/failing tests, queued commands, open follow-ups. |
 | [`/clear-check`](clear-check.md) | Direct verdict on whether it's **safe to `/clear`** the context now, with a wrap-up checklist if not. |
 | [`/handoff`](handoff.md) | Saves the current spec/plan to an MD file and writes a resume prompt (with the file path) to `.claude/handoff.md` + clipboard, so you can `/clear` and continue cold. |
