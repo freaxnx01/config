@@ -30,6 +30,7 @@ autocomplete menu.
 - `/gh:done` — recently implemented (closed) issues
 
 **Worktree** (`wt/`)
+- `/wt:status` — git status: uncommitted/untracked, branches, worktrees, cleanup check
 - `/wt:finish` — commit, merge, clean up the worktree
 
 Full details below.
@@ -57,6 +58,7 @@ Namespaced via subdirectories — `gh/new.md` → `/gh:new`, `wt/finish.md` →
 | [`/gh:work`](gh/work.md) `<N>` | Works issue #N end-to-end: view → brainstorm (if unclear) → plan → worktree → subagent-driven implementation → ready for `/wt:finish`. |
 | [`/gh:prs`](gh/prs.md) | Open PRs awaiting review (yours-requested first, then others not slipping through). |
 | [`/gh:done`](gh/done.md) | Recently implemented (closed-as-completed) issues, most recent first. |
+| [`/wt:status`](wt/status.md) | Read-only: uncommitted/untracked files, branches (merged + ahead/behind), worktrees, and a verdict on whether the current worktree is safe to clean up. |
 | [`/wt:finish`](wt/finish.md) | Commit, merge into default branch, and clean up the current worktree/branch (confirms before destructive steps). |
 
 ### The `/handoff` → `/clear` → `/pickup` flow
