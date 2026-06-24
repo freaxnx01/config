@@ -12,6 +12,22 @@ for Claude Code. Each `.md` file becomes a `/<filename>` command; the
 | [`/pickup`](pickup.md) | Resumes work saved by `/handoff` — reads `.claude/handoff.md` and continues from where you left off, subagent-driven. |
 | [`/subagent-driven`](subagent-driven.md) | Executes the current implementation plan via `superpowers:subagent-driven-development`. Explicit counterpart to the always-on [`subagent-driven-default`](../subagent-driven-default.md) partial. |
 
+### GitHub & worktree workflow (`gh/`, `wt/`)
+
+Namespaced via subdirectories — `gh/new.md` → `/gh:new`, `wt/finish.md` →
+`/wt:finish`. All use the `gh` CLI against the current repo (whatever your active
+`gh` account can access).
+
+| Command | What it does |
+|---------|--------------|
+| [`/gh:new`](gh/new.md) `<notes>` | Creates an issue from your notes, always labeled `needs-enrichment` (creates the label if missing). |
+| [`/gh:issues`](gh/issues.md) | Open issues, newest first — compact table. |
+| [`/gh:triage`](gh/triage.md) | Open issues ordered for triage: bugs/fixes first, then low-complexity quick wins. |
+| [`/gh:work`](gh/work.md) `<N>` | Works issue #N end-to-end: view → brainstorm (if unclear) → plan → worktree → subagent-driven implementation → ready for `/wt:finish`. |
+| [`/gh:prs`](gh/prs.md) | Open PRs awaiting review (yours-requested first, then others not slipping through). |
+| [`/gh:done`](gh/done.md) | Recently implemented (closed-as-completed) issues, most recent first. |
+| [`/wt:finish`](wt/finish.md) | Commit, merge into default branch, and clean up the current worktree/branch (confirms before destructive steps). |
+
 ### The `/handoff` → `/clear` → `/pickup` flow
 
 A skill **cannot** run `/clear` or inject a follow-up prompt itself — clearing

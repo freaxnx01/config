@@ -39,19 +39,21 @@ fi
 # 2) Make sure ~/.claude/commands/ exists.
 mkdir -p "$DEST_DIR"
 
-# 3) Install each command .md (skip this dir's README).
+# 3) Install each command .md, preserving subdirs (which become /namespace:cmd).
+#    Skip any README.md at the top level or inside namespace dirs.
 echo "→ installing commands into $DEST_DIR ($mode)"
-for f in "$SRC_DIR"/*.md; do
-  name="$(basename "$f")"
-  [ "$name" = "README.md" ] && continue
-  dest="$DEST_DIR/$name"
+while IFS= read -r f; do
+  rel="${f#"$SRC_DIR"/}"
+  case "$rel" in README.md|*/README.md) continue ;; esac
+  dest="$DEST_DIR/$rel"
+  mkdir -p "$(dirname "$dest")"
   if [ "$mode" = "copy" ]; then
     cp -f "$f" "$dest"
-    echo "  copied  $name"
+    echo "  copied  $rel"
   else
     ln -sfn "$f" "$dest"
-    echo "  linked  $name"
+    echo "  linked  $rel"
   fi
-done
+done < <(find "$SRC_DIR" -type f -name '*.md')
 
 echo "✓ done — type / in any project to see the commands (e.g. /loose-ends, /clear-check)"
