@@ -55,8 +55,11 @@ if ! jq -e . "$SETTINGS" >/dev/null 2>&1; then
   exit 1
 fi
 
-present='[ (.hooks.SessionStart // [])[] | select(.matcher? == "clear") | .hooks[]? | .command? ] | index($c)'
-if jq -e --arg c "$CMD" "$present" "$SETTINGS" >/dev/null 2>&1; then
+# Match by script basename, not exact string, so an existing entry written with an
+# absolute path (or different $HOME spelling) still counts as present — avoids a
+# near-duplicate that would inject the resume context twice.
+present='([ (.hooks.SessionStart // [])[] | select(.matcher? == "clear") | .hooks[]? | .command? | select(. != null) | select(test("handoff-resume\\.sh")) ] | length) > 0'
+if jq -e "$present" "$SETTINGS" >/dev/null 2>&1; then
   echo "✓ settings.json already wires the hook — nothing to do"
   exit 0
 fi
