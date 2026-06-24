@@ -1,8 +1,35 @@
 # Claude Code shared slash commands
 
 User-level [custom slash commands](https://docs.anthropic.com/en/docs/claude-code/slash-commands#custom-slash-commands)
-for Claude Code. Each `.md` file becomes a `/<filename>` command; the
-`description:` front-matter shows in the `/` autocomplete menu.
+for Claude Code. Each `.md` file becomes a `/<filename>` command (subdirs become
+`/namespace:command`); the `description:` front-matter shows in the `/`
+autocomplete menu.
+
+## At a glance
+
+**Session hygiene**
+- `/loose-ends` — list anything started but unfinished
+- `/clear-check` — verdict on whether it's safe to `/clear`
+
+**Phase handoff** (pairs with the `SessionStart(clear)` [hook](../hooks/handoff-resume.sh))
+- `/handoff` — save spec/plan to MD + resume prompt to `.claude/handoff.md` + clipboard, then `/clear`
+- `/pickup` — resume from `.claude/handoff.md`
+
+**Superpowers**
+- `/subagent-driven` — execute the current plan subagent-driven (pairs with the always-on [`subagent-driven-default`](../subagent-driven-default.md) partial)
+
+**GitHub** (`gh/`)
+- `/gh:new <notes>` — create issue, labeled `needs-enrichment`
+- `/gh:issues` — open issues, newest first
+- `/gh:triage` — open issues: bugs/fixes first, then quick wins
+- `/gh:work <N>` — work issue #N (view → plan → worktree → subagent-driven)
+- `/gh:prs` — PRs awaiting review
+- `/gh:done` — recently implemented (closed) issues
+
+**Worktree** (`wt/`)
+- `/wt:finish` — commit, merge, clean up the worktree
+
+Full details below.
 
 | Command | What it does |
 |---------|--------------|
