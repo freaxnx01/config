@@ -2,18 +2,23 @@
 description: Git status — uncommitted/untracked, branches, worktrees, cleanup check
 ---
 
-Read-only inspection of the current repo. Make **no** changes. Report concisely:
+Read-only inspection of the current repo — don't change the working tree or any
+branches (a `git fetch` to refresh remote-tracking refs is fine). Report concisely:
 
-1. **Working tree** — uncommitted (staged + unstaged) and untracked files, plus
-   ahead/behind vs upstream. `git status --short --branch` is enough; summarize,
-   don't dump huge lists.
-2. **Branches** — local branches with upstream + ahead/behind (`git branch -vv`),
+1. **Working tree** — uncommitted (staged + unstaged) and untracked files.
+   `git status --short --branch` is enough; summarize, don't dump huge lists.
+2. **Behind/ahead of remote** — first `git fetch --quiet` (network read; updates
+   only remote-tracking refs, no working-tree change), then report whether the
+   current branch is **behind** its upstream (needs a pull), ahead (needs a push),
+   or up to date — e.g. `git rev-list --left-right --count @{u}...HEAD`. If the
+   branch has no upstream, say so.
+3. **Branches** — local branches with upstream + ahead/behind (`git branch -vv`),
    and which are already merged into the default branch
    (`git branch --merged <default>`).
-3. **Worktrees** — `git worktree list`; mark which one is the current directory and
+4. **Worktrees** — `git worktree list`; mark which one is the current directory and
    which is the primary checkout. Flag any `prunable` entries
    (`git worktree list --porcelain` shows them).
-4. **Can the current worktree be cleaned up?** Give a clear yes/no with the reason.
+5. **Can the current worktree be cleaned up?** Give a clear yes/no with the reason.
    Safe to clean up when ALL hold:
    - the current dir is a **linked worktree**, not the primary checkout;
    - the working tree is **clean** (no uncommitted or untracked files);
