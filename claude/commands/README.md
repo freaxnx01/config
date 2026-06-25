@@ -27,6 +27,7 @@ autocomplete menu.
 - `/gh:triage` — open issues: bugs/fixes first, then quick wins
 - `/gh:work <N>` — work issue #N (view → plan → worktree → subagent-driven)
 - `/gh:prs` — PRs awaiting review
+- `/gh:review [N…]` — pre-review PRs vs their issue AC, then trigger `@copilot`/`@claude` to fix
 - `/gh:done` — recently implemented (closed) issues
 
 **Worktree** (`wt/`)
@@ -57,6 +58,7 @@ Namespaced via subdirectories — `gh/new.md` → `/gh:new`, `wt/finish.md` →
 | [`/gh:triage`](gh/triage.md) | Open issues ordered for triage: bugs/fixes first, then low-complexity quick wins. |
 | [`/gh:work`](gh/work.md) `<N>` | Works issue #N end-to-end: view → brainstorm (if unclear) → plan → worktree → subagent-driven implementation → ready for `/wt:finish`. |
 | [`/gh:prs`](gh/prs.md) | Open PRs awaiting review (yours-requested first, then others not slipping through). |
+| [`/gh:review`](gh/review.md) `[N…]` | Pre-reviews PR(s) against their linked issue's acceptance criteria (parallel reviewer per PR), posts a comment-type review, and — only when fixes are needed — pings the owning agent with a numbered fix list. Prefers `@copilot` (the reliable trigger; can take over Claude-opened PRs too); uses `@claude` only where the Anthropic agent is confirmed responsive. |
 | [`/gh:done`](gh/done.md) | Recently implemented (closed-as-completed) issues, most recent first. |
 | [`/wt:status`](wt/status.md) | Read-only: uncommitted/untracked files, branches (merged + ahead/behind), worktrees, and a verdict on whether the current worktree is safe to clean up. |
 | [`/wt:finish`](wt/finish.md) | Commit, merge into default branch, and clean up the current worktree/branch (confirms before destructive steps). |
