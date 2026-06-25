@@ -1,5 +1,5 @@
 ---
-description: Label issue #N with ai-implement to kick off the agent-pipeline
+description: Validate issue readiness, then label it ai-implement so the agent-pipeline picks it up and opens a draft PR
 argument-hint: <issue number>
 ---
 
