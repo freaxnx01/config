@@ -18,9 +18,21 @@ Claude Code implements the issue on a new branch and opens a draft PR.
 3. **Pipeline is wired up** — `.github/workflows/claude.yml` must exist in the repo;
    if it doesn't, tell the user to run `/sync-ai-instructions` or wire up the pipeline
    first, then stop.
-4. **Issue is actionable** — it should have clear scope/AC. If it carries
-   `needs-enrichment` or `❓ to-be-defined`, warn the agent may produce a weak PR and
-   ask the user to confirm before proceeding.
+4. **Issue is ready for an agent** — read the full issue body and comments with
+   `gh issue view <N> --comments`, then judge whether an AI agent has enough to
+   implement it without guessing. A ready issue has **all three**:
+   - **Acceptance criteria** — concrete, testable conditions ("given X, when Y, then Z";
+     or a checklist of behaviours). Vague goals ("make it better") don't count.
+   - **Scope / spec** — what to build: endpoints, data model, UI behaviour, or a
+     concise implementation plan. The agent must be able to start without asking
+     clarifying questions.
+   - **No blocking unknowns** — no open design questions, unresolved dependencies, or
+     "TBD" placeholders that the agent cannot resolve from the codebase alone.
+
+   If any of the three is missing, **stop** — do not label. Tell the user specifically
+   what's missing and suggest they add it to the issue body before re-running.
+   If it carries `needs-enrichment` or `❓ to-be-defined`, treat that as a hard stop
+   (don't just warn — the label signals the issue is not ready).
 
 ## Apply the label
 
