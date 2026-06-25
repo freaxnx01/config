@@ -1,10 +1,10 @@
 ---
-description: List open issues that are not WIP (no open PR) and not parked, newest first
+description: List parked issues (🧊 parked) — intentionally deferred, newest first
 ---
 
-List open issues in the current repo that are **not work-in-progress** — i.e. have no **open** PR — and **not parked** (no `🧊 parked` label) — **newest first**. Issues whose only linked PR is already merged still count as not-WIP and are shown. Parked issues are deliberately deferred; list them with `/gh:parked`.
+List open issues in the current repo that are **parked** — i.e. carry the `🧊 parked` label (understood but intentionally deferred) — **newest first**. These are the issues excluded from `/gh:issues`.
 
-`gh issue list` can't see PR links, so query the timeline via GraphQL and drop any issue that has an open linked PR (a `Closes #`/cross-reference or a development-linked PR still in flight), then drop any issue carrying the `🧊 parked` label:
+Query via GraphQL so the open/merged state of any linked PR can be shown alongside each parked issue:
 
 ```bash
 gh api graphql \
@@ -29,8 +29,7 @@ query($owner:String!,$name:String!){
   }
 }' \
   --jq '.data.repository.issues.nodes
-    | map(select([.timelineItems.nodes[] | (.source // .subject) | .state] | map(select(. == "OPEN")) | length == 0))
-    | map(select([.labels.nodes[].name] | index("🧊 parked") | not))
+    | map(select([.labels.nodes[].name] | index("🧊 parked")))
     | .[] | {number, title, labels: [.labels.nodes[].name], age: .createdAt, author: .author.login}'
 ```
 
