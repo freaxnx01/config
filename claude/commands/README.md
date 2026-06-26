@@ -30,6 +30,7 @@ autocomplete menu.
 - `/gh:prs` — PRs awaiting review
 - `/gh:review [N…]` — pre-review PRs vs their issue AC, then trigger `@copilot`/`@claude` to fix
 - `/gh:done` — recently implemented (closed) issues
+- `/gh:enrich-phased <N>` — phased `/gh:enrich`: spec → `/clear` → plan → `/clear` → issue body (isolated context per phase)
 
 **Worktree** (`wt/`)
 - `/wt:status` — git status: uncommitted/untracked, branches, worktrees, cleanup check
