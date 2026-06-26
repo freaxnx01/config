@@ -31,6 +31,7 @@ autocomplete menu.
 - `/gh:review [N…]` — pre-review PRs vs their issue AC, then trigger `@copilot`/`@claude` to fix
 - `/gh:done` — recently implemented (closed) issues
 - `/gh:enrich-phased <N>` — phased `/gh:enrich`: spec → `/clear` → plan → `/clear` → issue body (isolated context per phase)
+- `/gh:route <N>` — recommend how to implement an issue (work / assign copilot|claude / implement) by complexity & readiness
 
 **Worktree** (`wt/`)
 - `/wt:status` — git status: uncommitted/untracked, branches, worktrees, cleanup check
