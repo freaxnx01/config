@@ -1,5 +1,5 @@
 ---
-description: Recommend how to implement an issue — gh:work / gh:assign copilot|claude / gh:implement — by complexity & readiness
+description: Recommend how to implement an issue — gh:work / gh:assign copilot|claude / gh:implement (+ agent-pipeline model) — by complexity & readiness
 argument-hint: <issue number>
 ---
 
@@ -61,14 +61,48 @@ Judge the issue on:
 A rough rule of thumb: **mechanical → Copilot**, **needs real judgement → Claude**,
 **needs your machine or your eyes → local `/gh:work`**, **not ready → enrich first**.
 
+## Step 4b — If the route is the agent-pipeline, also pick the model
+
+Only when the chosen route is **`/gh:implement`** (the `claude.yml` agent-pipeline).
+That pipeline can run either **Claude Code** or **OpenCode → OpenRouter**, selected by
+`agent:*` + `model:*` labels (label beats the repo's `default-model`). Pick from the
+policy below by the **shape** of the work, derived from the OpenCode×OpenRouter model
+comparison (provenance: `docs/model-comparison-search-endpoint.md` in repos that ran it).
+
+> **OpenCode needs tool-use models.** Never route OpenCode to `model:qwen-coder`
+> (no tool endpoint) or `model:codestral` (emits malformed tool calls → no edits).
+> Costs are rough $/M (in/out).
+
+| Task shape | Recommend | Why |
+|---|---|---|
+| Straightforward feature / endpoint / CRUD | `agent:opencode` + `model:gpt-oss-120b` (~0.03/0.15) | Won the .NET endpoint comparison — cleanest output, ~100× cheaper than Opus |
+| Validation- / architecture-heavy | `agent:opencode` + `model:gemini-flash` (~0.10/0.40) | Most idiomatic structure (DTOs, model-binding validation) in the comparison |
+| Bugfix / small mechanical | `agent:opencode` + `model:gpt-oss-120b` | Cheap and reliable for bounded changes; escalate if it stalls |
+| Ambiguous / high-stakes / large refactor | `agent:claude` + `model:sonnet` (or `model:opus` if truly high-stakes) | Reliability and judgement over cost |
+
+Before recommending an OpenCode model, sanity-check the repo can honour it: the pinned
+agent-pipeline ref must include that `model:*` label (set listed in agent-pipeline
+`docs/CONSUMER-SETUP.md`) and `OPENROUTER_API_KEY` must be set. If not, fall back to
+`agent:claude` + `model:sonnet` and say why. Running it means adding the chosen
+`agent:*` + `model:*` **alongside** `ai-implement` in one `gh issue edit`.
+
+> **Caveat — thin evidence.** The model policy currently rests on a *single* task type on
+> one stack (.NET). Treat it as a starting default; prefer the safer (Claude) pick when
+> the task differs materially, and widen the evidence (run the comparison on a bugfix, a
+> refactor, a UI change) before hard-trusting per-shape picks.
+
 ## Step 5 — Recommend, then offer to run
 
 Print:
-- A one-line verdict: the recommended route + the **exact command** to run.
-- 1–2 sentences of reasoning tied to what you saw in the issue.
+- A one-line verdict: the recommended route + the **exact command** to run. If the route
+  is the agent-pipeline, include the chosen **agent + model** and the label set to apply.
+- 1–2 sentences of reasoning tied to what you saw in the issue (workflow choice **and**,
+  for the pipeline route, the model choice + rough cost).
 - The runner-up route and when it'd be better.
 
 Then ask if I want you to run the recommended command now. Only run it after I confirm.
+For the agent-pipeline route, "run it" means applying the `agent:*` + `model:*` +
+`ai-implement` labels (the readiness gate from `/gh:implement` still applies first).
 
 ## Tools
 
@@ -78,5 +112,7 @@ Then ask if I want you to run the recommended command now. Only run it after I c
 ---
 
 If you hit a blocker (issue not found, ambiguous readiness, a route that doesn't fit
-the situation), reason it out, recommend the closest sensible option, and update this
-command for the future.
+the situation, a routed model label missing in the repo, or a model shape-pick that
+consistently underperforms), reason it out, recommend the closest sensible option, and
+update this command for the future — including the Step 4b model policy as new
+comparison data lands.
