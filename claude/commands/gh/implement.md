@@ -34,6 +34,28 @@ Claude Code implements the issue on a new branch and opens a draft PR.
    If it carries `needs-enrichment` or `❓ to-be-defined`, treat that as a hard stop
    (don't just warn — the label signals the issue is not ready).
 
+## Post TDD contract
+
+Post a TDD requirement comment on the issue so the pipeline agent reads it as part
+of the issue context:
+
+```bash
+gh issue comment <N> --body "## TDD Required — Non-Negotiable
+
+Implement using Test-Driven Development:
+- **RED:** Write a failing test first. Run it. Confirm it fails for the right reason.
+- **GREEN:** Write the minimal code to make it pass. No more.
+- **REFACTOR:** Clean up while keeping tests green.
+
+No production code without a failing test first.
+
+Your PR description must include TDD evidence:
+- RED: command run + relevant failing output
+- GREEN: command run + passing output"
+```
+
+Replace `<N>` with the actual issue number.
+
 ## Apply the label
 
 Ensure the `ai-implement` label exists in the repo (create it if absent — color `#0075ca`,
