@@ -28,7 +28,7 @@ Post a TDD requirement comment on the issue so the assigned agent reads it as pa
 of the issue context:
 
 ```bash
-gh issue comment $n --body "## TDD Required — Non-Negotiable
+gh issue comment <N> --body "## TDD Required — Non-Negotiable
 
 Implement using Test-Driven Development:
 - **RED:** Write a failing test first. Run it. Confirm it fails for the right reason.
@@ -41,6 +41,8 @@ Your PR description must include TDD evidence:
 - RED: command run + relevant failing output
 - GREEN: command run + passing output"
 ```
+
+Replace `<N>` with the actual issue number (from `$ARGUMENTS`).
 
 ## Resolve the actor and assign
 
