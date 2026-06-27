@@ -22,6 +22,26 @@ when the user explicitly asks for Claude (or has confirmed it's responsive in th
 3. The chosen agent is **assignable** in this repo (see the suggestedActors query below); if it
    isn't listed, the GitHub app isn't installed — say so and stop.
 
+## Post TDD contract
+
+Post a TDD requirement comment on the issue so the assigned agent reads it as part
+of the issue context:
+
+```bash
+gh issue comment $n --body "## TDD Required — Non-Negotiable
+
+Implement using Test-Driven Development:
+- **RED:** Write a failing test first. Run it. Confirm it fails for the right reason.
+- **GREEN:** Write the minimal code to make it pass. No more.
+- **REFACTOR:** Clean up while keeping tests green.
+
+No production code without a failing test first.
+
+Your PR description must include TDD evidence:
+- RED: command run + relevant failing output
+- GREEN: command run + passing output"
+```
+
 ## Resolve the actor and assign
 
 Bots can't be assigned via `gh issue edit --add-assignee` (it resolves logins as users).
