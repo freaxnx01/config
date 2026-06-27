@@ -67,7 +67,7 @@ Only when the chosen route is **`/gh:implement`** (the `claude.yml` agent-pipeli
 That pipeline can run either **Claude Code** or **OpenCode → OpenRouter**, selected by
 `agent:*` + `model:*` labels (label beats the repo's `default-model`). Pick from the
 policy below by the **shape** of the work, derived from the OpenCode×OpenRouter model
-comparison (provenance: `docs/model-comparison-search-endpoint.md` in repos that ran it).
+comparison (provenance: the living [model-comparison report](https://github.com/freaxnx01/agent-pipeline/blob/main/docs/model-comparison.md) in agent-pipeline `docs/`).
 
 > **OpenCode needs tool-use models.** Never route OpenCode to `model:qwen-coder`
 > (no tool endpoint) or `model:codestral` (emits malformed tool calls → no edits).
