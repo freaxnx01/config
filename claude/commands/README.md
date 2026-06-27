@@ -25,13 +25,17 @@ autocomplete menu.
 **GitHub** (`gh/`)
 - `/gh:new <notes>` — create issue, labeled `needs-enrichment`
 - `/gh:issues` — open issues, newest first
+- `/gh:parked` — parked (🧊) issues, newest first
 - `/gh:triage` — open issues: bugs/fixes first, then quick wins
-- `/gh:work <N>` — work issue #N (view → plan → worktree → subagent-driven)
+- `/gh:enrich <N>` — enrich issue with spec + plan, update body for agent-pipeline
+- `/gh:enrich-phased <N>` — phased `/gh:enrich`: spec → `/clear` → plan → `/clear` → issue body (isolated context per phase)
+- `/gh:route <N>` — recommend implementation path (work / assign / implement) by complexity & readiness
+- `/gh:work <N>` — work issue #N (view → plan → worktree → subagent-driven, **TDD enforced**)
+- `/gh:assign <N> [copilot|claude]` — assign issue to a coding agent (**posts TDD contract** before assigning)
+- `/gh:implement <N>` — validate readiness, label `ai-implement` to trigger agent-pipeline (**posts TDD contract** before labeling)
 - `/gh:prs` — PRs awaiting review
 - `/gh:review [N…]` — pre-review PRs vs their issue AC, then trigger `@copilot`/`@claude` to fix
 - `/gh:done` — recently implemented (closed) issues
-- `/gh:enrich-phased <N>` — phased `/gh:enrich`: spec → `/clear` → plan → `/clear` → issue body (isolated context per phase)
-- `/gh:route <N>` — recommend how to implement an issue (work / assign copilot|claude / implement) by complexity & readiness
 
 **Worktree** (`wt/`)
 - `/wt:status` — git status: uncommitted/untracked, branches, worktrees, cleanup check
@@ -58,9 +62,15 @@ Namespaced via subdirectories — `gh/new.md` → `/gh:new`, `wt/finish.md` →
 | Command | What it does |
 |---------|--------------|
 | [`/gh:new`](gh/new.md) `<notes>` | Creates an issue from your notes, always labeled `needs-enrichment` (creates the label if missing). |
-| [`/gh:issues`](gh/issues.md) | Open issues, newest first — compact table. |
+| [`/gh:issues`](gh/issues.md) | Open issues, newest first — compact table. Excludes parked and WIP (open PR) issues. |
+| [`/gh:parked`](gh/parked.md) | Open issues carrying `🧊 parked` — intentionally deferred — newest first. |
 | [`/gh:triage`](gh/triage.md) | Open issues ordered for triage: bugs/fixes first, then low-complexity quick wins. |
-| [`/gh:work`](gh/work.md) `<N>` | Works issue #N end-to-end: view → brainstorm (if unclear) → plan → worktree → subagent-driven implementation → ready for `/wt:finish`. |
+| [`/gh:enrich`](gh/enrich.md) `<N>` | Enriches issue #N with a spec and implementation plan, then updates the issue body so it's ready for the agent-pipeline. |
+| [`/gh:enrich-phased`](gh/enrich-phased.md) `<N>` | Phased enrichment with context isolation: spec phase → `/clear` → plan phase → `/clear` → update issue body. Use when the issue is complex enough that a single context window isn't enough. |
+| [`/gh:route`](gh/route.md) `<N>` | Recommends the best implementation path for issue #N — `/gh:work`, `/gh:assign copilot\|claude`, or `/gh:implement` with an agent-pipeline model — based on complexity and readiness. |
+| [`/gh:work`](gh/work.md) `<N>` | Works issue #N end-to-end: view → brainstorm (if unclear) → plan → worktree → subagent-driven implementation → ready for `/wt:finish`. **TDD is a non-negotiable global constraint** injected into the plan. |
+| [`/gh:assign`](gh/assign.md) `<N> [copilot\|claude]` | Assigns issue #N to a GitHub coding agent (defaults to `@copilot`). **Posts a TDD contract comment** on the issue before assigning so the bot reads it as context. |
+| [`/gh:implement`](gh/implement.md) `<N>` | Validates issue readiness (AC, scope, no blocking unknowns), then labels it `ai-implement` to trigger the agent-pipeline. **Posts a TDD contract comment** on the issue before labeling. |
 | [`/gh:prs`](gh/prs.md) | Open PRs awaiting review (yours-requested first, then others not slipping through). |
 | [`/gh:review`](gh/review.md) `[N…]` | Pre-reviews PR(s) against their linked issue's acceptance criteria (parallel reviewer per PR), posts a comment-type review, and — only when fixes are needed — pings the owning agent with a numbered fix list. Prefers `@copilot` (the reliable trigger; can take over Claude-opened PRs too); uses `@claude` only where the Anthropic agent is confirmed responsive. |
 | [`/gh:done`](gh/done.md) | Recently implemented (closed-as-completed) issues, most recent first. |
