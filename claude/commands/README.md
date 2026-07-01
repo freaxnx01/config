@@ -22,6 +22,18 @@ autocomplete menu.
 **Superpowers**
 - `/subagent-driven` — execute the current plan subagent-driven (pairs with the always-on [`subagent-driven-default`](../subagent-driven-default.md) partial)
 
+**Forge routers** (auto-detect GitHub vs Forgejo from the `origin` remote, then delegate to the `gh:`/`fj:` pair)
+- `/issues` — open issues, newest first
+- `/prs` — PRs awaiting review
+- `/parked` — parked (🧊) issues, newest first
+- `/triage` — open issues: bugs/fixes first, then quick wins
+- `/done` — recently implemented (closed) issues
+- `/new <notes>` — create issue, labeled `needs-enrichment`
+- `/enrich <N>` — enrich issue with spec + plan
+- `/enrich-phased <N>` — phased enrich (spec → `/clear` → plan → `/clear` → body)
+- `/route <N>` — recommend implementation path by complexity & readiness
+- `/work <N>` — work issue #N end-to-end (**TDD enforced**)
+
 **GitHub** (`gh/`)
 - `/gh:new <notes>` — create issue, labeled `needs-enrichment`
 - `/gh:issues` — open issues, newest first
@@ -52,6 +64,32 @@ Full details below.
 | [`/handoff`](handoff.md) | Saves the current spec/plan to an MD file and writes a resume prompt (with the file path) to `.claude/handoff.md` + clipboard, so you can `/clear` and continue cold. |
 | [`/pickup`](pickup.md) | Resumes work saved by `/handoff` — reads `.claude/handoff.md` and continues from where you left off, subagent-driven. |
 | [`/subagent-driven`](subagent-driven.md) | Executes the current implementation plan via `superpowers:subagent-driven-development`. Explicit counterpart to the always-on [`subagent-driven-default`](../subagent-driven-default.md) partial. |
+
+### Forge routers (`/issues`, `/prs`, `/parked`, `/triage`, `/done`)
+
+Forge-agnostic aliases. Each detects the forge from the `origin` remote host —
+generic host-matching against `gh auth` logins (GitHub / GHES) and `tea logins`
+(Forgejo / Gitea), falling back to `github.com` — then reads and follows the
+matching `gh:`/`fj:` command, which stays the single source of truth for the query.
+Unknown host → it reports the host and points at `gh auth login` / `tea login add`
+rather than guessing.
+
+| Command | What it does |
+|---------|--------------|
+| [`/issues`](issues.md) | → `/gh:issues` or `/fj:issues` — open issues, newest first (not WIP, not parked). |
+| [`/prs`](prs.md) | → `/gh:prs` or `/fj:prs` — PRs awaiting review. |
+| [`/parked`](parked.md) | → `/gh:parked` or `/fj:parked` — parked (🧊) issues, newest first. |
+| [`/triage`](triage.md) | → `/gh:triage` or `/fj:triage` — open issues: bugs/fixes first, then quick wins. |
+| [`/done`](done.md) | → `/gh:done` or `/fj:done` — recently implemented (closed) issues. |
+| [`/new`](new.md) `<notes>` | → `/gh:new` or `/fj:new` — create an issue from notes, labeled `needs-enrichment`. |
+| [`/enrich`](enrich.md) `<N>` | → `/gh:enrich` or `/fj:enrich` — enrich issue #N with a spec + implementation plan. |
+| [`/enrich-phased`](enrich-phased.md) `<N>` | → `/gh:enrich-phased` or `/fj:enrich-phased` — phased enrichment with context isolation. |
+| [`/route`](route.md) `<N>` | → `/gh:route` or `/fj:route` — recommend the implementation path for issue #N. |
+| [`/work`](work.md) `<N>` | → `/gh:work` or `/fj:work` — work issue #N end-to-end (**TDD enforced**). |
+
+`/assign`, `/implement`, and `/review` have **no router** — they're GitHub-only
+(agent-pipeline / coding-agent triggers with no Forgejo equivalent). Use the `gh:`
+form directly.
 
 ### GitHub & worktree workflow (`gh/`, `wt/`)
 
