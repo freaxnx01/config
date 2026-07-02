@@ -22,6 +22,9 @@ autocomplete menu.
 **Superpowers**
 - `/subagent-driven` — execute the current plan subagent-driven (pairs with the always-on [`subagent-driven-default`](../subagent-driven-default.md) partial)
 
+**Idea capture** (forge-agnostic, local — precedes the issue funnel)
+- `/capture-idea <idea>` — jot an idea into the current repo's `docs/ideas.md`, no issue
+
 **Forge routers** (auto-detect GitHub vs Forgejo from the `origin` remote, then delegate to the `gh:`/`fj:` pair)
 - `/issues` — open issues, newest first
 - `/prs` — PRs awaiting review
@@ -64,6 +67,7 @@ Full details below.
 | [`/handoff`](handoff.md) | Saves the current spec/plan to an MD file and writes a resume prompt (with the file path) to `.claude/handoff.md` + clipboard, so you can `/clear` and continue cold. |
 | [`/pickup`](pickup.md) | Resumes work saved by `/handoff` — reads `.claude/handoff.md` and continues from where you left off, subagent-driven. |
 | [`/subagent-driven`](subagent-driven.md) | Executes the current implementation plan via `superpowers:subagent-driven-development`. Explicit counterpart to the always-on [`subagent-driven-default`](../subagent-driven-default.md) partial. |
+| [`/capture-idea`](capture-idea.md) `<idea>` | Appends a fuzzy idea to the current repo's `docs/ideas.md` (zero-friction, no evaluation, no issue). Forge-agnostic and self-contained — feeds the issue funnel but doesn't call `gh`/`tea`. |
 
 ### Forge routers (`/issues`, `/prs`, `/parked`, `/triage`, `/done`)
 
