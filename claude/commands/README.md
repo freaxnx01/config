@@ -115,6 +115,32 @@ Namespaced via subdirectories — `gh/new.md` → `/gh:new`, `wt/finish.md` →
 | [`/wt:status`](wt/status.md) | Read-only: uncommitted/untracked files, branches (merged + ahead/behind), worktrees, and a verdict on whether the current worktree is safe to clean up. |
 | [`/wt:finish`](wt/finish.md) | Commit, merge into default branch, and clean up the current worktree/branch (confirms before destructive steps). |
 
+### When to use which save-and-resume pair
+
+Both pairs persist state to a file so work can resume later, so they look
+redundant — but they answer different questions and are **both kept on purpose**:
+
+- **`/wrap-up` → `/todo`** — *"what were all the threads I left dangling?"* A
+  whole-session, multi-topic checklist. `/wrap-up` writes `TODO.md` at the repo root
+  and **commits & pushes** it; `/todo` reads it back, shows the unchecked items, and
+  asks which to tackle. Because `TODO.md` is committed, it survives across machines.
+- **`/handoff` → `/pickup`** — *"I'm deep in one task and need to `/clear` without
+  losing my place."* A single in-flight phase artifact (the current spec or plan).
+  `/handoff` writes `.claude/handoff.md` + copies a resume prompt to the clipboard;
+  `/pickup` continues that one task from the exact next step, subagent-driven. It
+  pairs with the `SessionStart(clear)` hook below.
+
+| Axis | `/wrap-up` → `/todo` | `/handoff` → `/pickup` |
+|---|---|---|
+| Granularity | many loose ends across the session | one in-flight phase artifact |
+| Boundary | end-of-session / next-day resume | mid-task `/clear` to shed context bloat |
+| Saved to & travel | `TODO.md` at repo root — committed & pushed → cross-machine | `.claude/handoff.md` — local + clipboard, not committed → same-machine |
+| Automation | none | `SessionStart(clear)` handoff-resume hook |
+| Resume style | checklist, pick an item | continue one task from the next step |
+
+> `.claude/handoff.md` is intentionally local/ephemeral today; making it syncable
+> across machines is tracked separately in issue #34.
+
 ### The `/handoff` → `/clear` → `/pickup` flow
 
 A skill **cannot** run `/clear` or inject a follow-up prompt itself — clearing
