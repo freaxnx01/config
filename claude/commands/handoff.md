@@ -28,3 +28,6 @@ then stop:
    Note that you cannot run `/clear` yourself — that keystroke is mine.
 
 Keep the resume prompt to a few lines but self-contained.
+
+> **Related:** `/handoff` saves *one* in-flight phase for a `/clear`-and-resume. To
+> capture *all* the session's loose ends instead, use `/wrap-up` → `/todo`.

@@ -19,3 +19,6 @@ When an item is completed during this session, remove its `- [ ]` line from `TOD
 (or mark it `- [x]`) and save the file. Keep `TODO.md` up to date as work progresses.
 
 If you run into blockers, find a solution and update this skill for the future.
+
+> **Related:** `/todo` resumes the whole-session checklist. To continue a single task
+> saved by `/handoff`, use `/pickup` instead.

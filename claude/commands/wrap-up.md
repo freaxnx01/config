@@ -24,3 +24,6 @@ in the repo root.
    and pushed. If there's nothing outstanding, say so and skip writing the file.
 
 Keep it terse. No preamble.
+
+> **Related:** `/wrap-up` captures *all* session loose ends. To save and resume a
+> *single* in-flight task across a `/clear`, use `/handoff` → `/pickup` instead.

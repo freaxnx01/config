@@ -8,3 +8,6 @@ and continue from the stated next step — using `superpowers:subagent-driven-de
 for any implementation.
 
 If `.claude/handoff.md` doesn't exist, tell me there's nothing to resume and stop.
+
+> **Related:** `/pickup` continues a single handed-off task. To see the whole-session
+> checklist from `/wrap-up`, use `/todo` instead.
