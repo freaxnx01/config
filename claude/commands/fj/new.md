@@ -24,9 +24,9 @@ tea issues create --login git-home \
   --labels needs-enrichment
 ```
 
-After creating, print the issue number and URL. If there's no `tea` login or repo
-context (not inside a Forgejo clone, or remote isn't `git.home.freaxnx01.ch`), say
-so and stop.
+After creating, print the issue number, title, and URL. If there's no `tea` login
+or repo context (not inside a Forgejo clone, or remote isn't
+`git.home.freaxnx01.ch`), say so and stop.
 
 My notes:
 $ARGUMENTS

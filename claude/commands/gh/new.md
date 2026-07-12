@@ -12,8 +12,8 @@ Create a GitHub issue in the current repo with `gh issue create`.
   it first (`gh label create needs-enrichment` with a sensible color), then retry.
 - Don't assign, milestone, or add other labels unless I said so.
 
-After creating, print the issue number and URL. If there's no `gh`/repo context,
-say so and stop.
+After creating, print the issue number, title, and URL. If there's no `gh`/repo
+context, say so and stop.
 
 My notes:
 $ARGUMENTS
