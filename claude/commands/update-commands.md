@@ -1,5 +1,5 @@
 ---
-description: Update my user-level slash commands from the config repo (pull + relink)
+description: Update my user-level slash commands from config + agent-pipeline (pull + relink)
 ---
 
 Update my personal user-level Claude Code slash commands. They now come from **two**

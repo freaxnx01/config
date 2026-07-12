@@ -135,7 +135,7 @@ curl -fsSL https://raw.githubusercontent.com/freaxnx01/config/main/setup/01-clau
 ### Native Windows (PowerShell, no symlinks)
 
 ```powershell
-Copy-Item -Force "$HOME\repos\...\config\claude\commands\*.md" "$HOME\.claude\commands\"
+Copy-Item -Recurse -Force "$HOME\repos\...\config\claude\commands\*.md" "$HOME\.claude\commands\"
 Copy-Item -Recurse -Force "$HOME\repos\...\agent-pipeline\commands\*" "$HOME\.claude\commands\"
 ```
 
