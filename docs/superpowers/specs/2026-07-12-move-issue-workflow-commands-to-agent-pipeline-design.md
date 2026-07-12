@@ -110,7 +110,10 @@ invokes. The source repo owns knowledge of its own layout; config does not hardc
 
 ### 4. Docs & cutover
 
-- `git mv` the command files with history preserved.
+- **Copy** the command files into `agent-pipeline/commands/` and `git rm` them from
+  `config` (resolved 2026-07-12 — pragmatic copy over a cross-repo history graft).
+  Per-file history stays reachable in config's git log; agent-pipeline starts them
+  fresh with a provenance note in the commit message.
 - Update READMEs: `config`'s root "What's here" + `claude/commands/README.md`;
   `agent-pipeline`'s README + `docs/DESIGN.md` + `docs/DECISIONS.md` boundary note.
 - Fix all cross-references (both repos reference the moved commands).
