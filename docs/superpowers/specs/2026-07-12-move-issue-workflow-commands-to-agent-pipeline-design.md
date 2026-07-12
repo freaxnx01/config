@@ -103,10 +103,10 @@ only inside that repo). Implications:
    `agent-pipeline`. `/commands` needs no change (it lists `~/.claude/commands/`
    regardless of origin).
 
-Open decision for the plan phase: whether `agent-pipeline`'s link step is a new
-script under `agent-pipeline/setup/` (mirroring config's pattern) or a small function
-config's `01-` script owns and points at `agent-pipeline/commands/`. Recommendation:
-a thin script in `agent-pipeline` so the source repo owns knowledge of its own layout.
+**Resolved (2026-07-12):** `agent-pipeline`'s link step is a **thin script under
+`agent-pipeline/setup/`** (mirroring config's pattern) that config's `01-` script
+invokes. The source repo owns knowledge of its own layout; config does not hardcode
+`agent-pipeline`'s `commands/` path.
 
 ### 4. Docs & cutover
 
