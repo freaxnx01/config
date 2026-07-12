@@ -18,7 +18,7 @@ setup steps idempotently:
 | Step | Script | Installs |
 |------|--------|----------|
 | Partials | [`setup/00-claude-partials.sh`](setup/00-claude-partials.sh) | `@`-imports into `~/.claude/CLAUDE.md` (task-checklist, skill-authoring, subagent-driven-default) |
-| Commands | [`setup/01-claude-commands.sh`](setup/01-claude-commands.sh) | Slash commands into `~/.claude/commands/` (symlinked) — see [list](claude/commands/README.md) |
+| Commands | [`setup/01-claude-commands.sh`](setup/01-claude-commands.sh) | Generic slash commands from this repo **plus** the issue-workflow console from [agent-pipeline](https://github.com/freaxnx01/agent-pipeline) (cloned + linked automatically) into `~/.claude/commands/` — see [list](claude/commands/README.md) |
 | Hooks | [`setup/02-claude-hooks.sh`](setup/02-claude-hooks.sh) | `handoff-resume` SessionStart(clear) hook + `settings.json` wiring |
 
 **Requirements:** `git` and `jq` (the handoff hook needs `jq` at runtime). Commands
@@ -53,7 +53,8 @@ Start a fresh Claude Code session, then:
 
 ## What's here
 
-- [`claude/`](claude/) — partials, [commands](claude/commands/README.md), and [hooks](claude/hooks/)
+- [`claude/`](claude/) — partials, generic [commands](claude/commands/README.md), and [hooks](claude/hooks/)
+  (the issue-workflow console commands live in [agent-pipeline](https://github.com/freaxnx01/agent-pipeline)`/commands/`, installed by the same bootstrap)
 - [`setup/`](setup/) — the idempotent installers above
 - `oh-my-posh/`, `windows/` — other personal config
 
