@@ -65,16 +65,20 @@ while IFS= read -r f; do
   fi
 done < <(find "$SRC_DIR" -type f -name '*.md')
 
-# 4) Install the agent-pipeline operator-console commands (issue-workflow routers
+# 4) Install the agent-workflow operator-console commands (issue-workflow routers
 #    + gh:/fj: families). They live in a SEPARATE repo now; config stays the single
 #    orchestrator by cloning it if absent and calling its own link step, so the
 #    "one curl sets up a machine" promise survives.
+# NOTE: the repo is being renamed freaxnx01/agent-pipeline -> freaxnx01/agent-workflow.
+# Until that rename lands, these two values MUST stay "agent-pipeline" (the URL
+# would 404 and the local clone still lives at the old path). Flip both when the
+# GitHub rename happens.
 AP_REPO_URL="https://github.com/freaxnx01/agent-pipeline.git"
 AP_REPO_DIR="$HOME/repos/github/freaxnx01/public/agent-pipeline"
 AP_LINK="$AP_REPO_DIR/setup/link-commands.sh"
 
 if [ "$sync" = 1 ] && [ ! -d "$AP_REPO_DIR/.git" ]; then
-  echo "→ cloning agent-pipeline repo to $AP_REPO_DIR (for console commands)"
+  echo "→ cloning agent-workflow repo to $AP_REPO_DIR (for console commands)"
   mkdir -p "$(dirname "$AP_REPO_DIR")"
   git clone "$AP_REPO_URL" "$AP_REPO_DIR"
 fi
@@ -83,11 +87,11 @@ if [ -f "$AP_LINK" ]; then
   ap_args=()
   [ "$mode" = "copy" ] && ap_args+=(--copy)
   [ "$sync" = 0 ] && ap_args+=(--no-sync)
-  echo "→ linking agent-pipeline console commands via $AP_LINK"
+  echo "→ linking agent-workflow console commands via $AP_LINK"
   bash "$AP_LINK" ${ap_args[@]+"${ap_args[@]}"}
 else
-  echo "⚠ agent-pipeline link step not found at $AP_LINK — console commands (gh:/fj:/routers) NOT installed." >&2
+  echo "⚠ agent-workflow link step not found at $AP_LINK — console commands (gh:/fj:/routers) NOT installed." >&2
   echo "  Clone https://github.com/freaxnx01/agent-pipeline and re-run, or run with sync enabled." >&2
 fi
 
-echo "✓ done — type / in any project to see the commands (generic from config, console from agent-pipeline)"
+echo "✓ done — type / in any project to see the commands (generic from config, console from agent-workflow)"

@@ -10,7 +10,7 @@ Resume where the last session left off.
    heading, so it's clear what's pending at a glance.
 
 3. **Orient the session** — for each item, state in one line what the concrete next
-   action is (e.g. "run `/gh:review 4`", "check agent-pipeline for `max-turns` input",
+   action is (e.g. "run `/gh:review 4`", "check agent-workflow for `max-turns` input",
    "commit README.md"). Don't start any work yet.
 
 4. **Ask which item to tackle first** — let me decide, then proceed.

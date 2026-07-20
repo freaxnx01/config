@@ -7,9 +7,9 @@ autocomplete menu.
 
 > **Where the issue-workflow console went.** The forge routers (`/issues`,
 > `/enrich`, `/route`, `/work`, …) and the `gh:*` / `fj:*` families now live in
-> **[freaxnx01/agent-pipeline](https://github.com/freaxnx01/agent-pipeline)** under
+> **[freaxnx01/agent-workflow](https://github.com/freaxnx01/agent-pipeline)** under
 > its top-level `commands/` — they are the pipeline's operator console. config's
-> bootstrap still installs them (it clones agent-pipeline and calls its link step),
+> bootstrap still installs them (it clones agent-workflow and calls its link step),
 > so `/commands` lists everything regardless of origin. This README covers only the
 > generic Claude Code commands that remain in config.
 
@@ -17,7 +17,7 @@ autocomplete menu.
 
 **Meta**
 - `/commands` — list my custom slash commands (user + project), grouped
-- `/update-commands` — update user-level commands from **both** sources (config + agent-pipeline): pull + relink
+- `/update-commands` — update user-level commands from **both** sources (config + agent-workflow): pull + relink
 
 **Session hygiene**
 - `/loose-ends` — list anything started but unfinished
@@ -40,7 +40,7 @@ Full details below.
 | Command | What it does |
 |---------|--------------|
 | [`/commands`](commands.md) | Lists your custom slash commands (user + project), grouped by source and namespace. |
-| [`/update-commands`](update-commands.md) | Updates user-level commands from **both** config and agent-pipeline — pulls latest `main` and re-symlinks into `~/.claude/commands/`. Read-only; no auth. |
+| [`/update-commands`](update-commands.md) | Updates user-level commands from **both** config and agent-workflow — pulls latest `main` and re-symlinks into `~/.claude/commands/`. Read-only; no auth. |
 | [`/loose-ends`](loose-ends.md) | Lists anything started but not finished in the session — uncommitted edits, unrun/failing tests, queued commands, open follow-ups. |
 | [`/clear-check`](clear-check.md) | Direct verdict on whether it's **safe to `/clear`** the context now, with a wrap-up checklist if not. |
 | [`/handoff`](handoff.md) | Saves the current spec/plan to an MD file and writes a resume prompt (with the file path) to `.claude/handoff.md` + clipboard, so you can `/clear` and continue cold. |
@@ -116,7 +116,7 @@ is a symlink (or copy) rather than an import line.
 
 The repo ships an idempotent setup script (sibling to the partials installer) that
 clones (or pulls) the repo at the canonical path, installs these generic commands
-into `~/.claude/commands/`, **and** clones agent-pipeline to install the console
+into `~/.claude/commands/`, **and** clones agent-workflow to install the console
 commands:
 
 ```bash

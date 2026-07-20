@@ -1,5 +1,5 @@
 ---
-description: Update my user-level slash commands from config + agent-pipeline (pull + relink)
+description: Update my user-level slash commands from config + agent-workflow (pull + relink)
 ---
 
 Update my personal user-level Claude Code slash commands. They now come from **two**
@@ -7,13 +7,13 @@ source repos, both installed into `~/.claude/commands/`:
 
 - **[freaxnx01/config](https://github.com/freaxnx01/config)** (`~/repos/github/freaxnx01/public/config`)
   — the generic commands (session hygiene, handoff/pickup, `wt:*`, meta).
-- **[freaxnx01/agent-pipeline](https://github.com/freaxnx01/agent-pipeline)** (`~/repos/github/freaxnx01/public/agent-pipeline`)
+- **[freaxnx01/agent-workflow](https://github.com/freaxnx01/agent-pipeline)** (`~/repos/github/freaxnx01/public/agent-pipeline`)
   — the issue-workflow operator console (forge routers, `gh:*`, `fj:*`, `capture-idea`).
 
 Steps:
 
 1. Run the idempotent config installer. It pulls the latest `main` for config,
-   re-symlinks the generic commands, **then** clones/pulls agent-pipeline and
+   re-symlinks the generic commands, **then** clones/pulls agent-workflow and
    re-symlinks the console commands via its own link step — so one command refreshes
    both sources:
 

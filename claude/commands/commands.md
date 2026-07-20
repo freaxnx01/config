@@ -42,7 +42,7 @@ Use these as the baseline set:
 - **Issue pipeline (GitHub):** `/gh:new` → `/gh:triage` → `/gh:route` → `/gh:enrich` → `/gh:work` → `/gh:review` → `/gh:prs` → `/gh:done`
   _Capture an idea, prioritize, decide how to build it, spec it, implement, review, merge, archive._
 - **Delegate to an AI agent:** `/gh:route` → `/gh:enrich-phased` → `/gh:assign` (or `/gh:implement`) → `/gh:review`
-  _Hand a well-specced issue to @copilot/@claude or the agent-pipeline instead of building it locally._
+  _Hand a well-specced issue to @copilot/@claude or the agent-workflow instead of building it locally._
 - **Forgejo pipeline:** `/fj:new` → `/fj:triage` → `/fj:route` → `/fj:enrich` → `/fj:work` → `/fj:prs` → `/fj:done`
   _Same flow as GitHub, on the self-hosted Forgejo instance._
 - **Session continuity (clear & resume):** `/loose-ends` → `/clear-check` → `/handoff` → `/clear` → `/pickup`
