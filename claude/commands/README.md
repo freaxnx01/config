@@ -7,7 +7,7 @@ autocomplete menu.
 
 > **Where the issue-workflow console went.** The forge routers (`/issues`,
 > `/enrich`, `/route`, `/work`, …) and the `gh:*` / `fj:*` families now live in
-> **[freaxnx01/agent-workflow](https://github.com/freaxnx01/agent-pipeline)** under
+> **[freaxnx01/agent-workflow](https://github.com/freaxnx01/agent-workflow)** under
 > its top-level `commands/` — they are the pipeline's operator console. config's
 > bootstrap still installs them (it clones agent-workflow and calls its link step),
 > so `/commands` lists everything regardless of origin. This README covers only the
@@ -136,7 +136,7 @@ curl -fsSL https://raw.githubusercontent.com/freaxnx01/config/main/setup/01-clau
 
 ```powershell
 Copy-Item -Recurse -Force "$HOME\repos\...\config\claude\commands\*.md" "$HOME\.claude\commands\"
-Copy-Item -Recurse -Force "$HOME\repos\...\agent-pipeline\commands\*" "$HOME\.claude\commands\"
+Copy-Item -Recurse -Force "$HOME\repos\...\agent-workflow\commands\*" "$HOME\.claude\commands\"
 ```
 
 ## Verify
@@ -147,5 +147,5 @@ should appear in the menu. Run `/clear-check` to confirm it responds.
 ## Adding a command
 
 A generic Claude Code command goes here; an issue-workflow / pipeline command goes in
-`agent-pipeline/commands/`. Drop a new `<name>.md` with a `description:` front-matter,
+`agent-workflow/commands/`. Drop a new `<name>.md` with a `description:` front-matter,
 commit, and re-run the matching linker on each machine.
