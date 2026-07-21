@@ -1,78 +1,53 @@
 #!/usr/bin/env bash
 # setup/02-claude-hooks.sh
 #
-# Install the handoff-resume SessionStart(clear) hook: copy the script to
-# ~/.claude/hooks/ AND wire it into ~/.claude/settings.json (matcher "clear").
+# Install the Claude Code hooks into ~/.claude/hooks/ and wire them into
+# ~/.claude/settings.json.
 #
-# Idempotent: re-running refreshes the script and is a no-op on settings.json if
-# the hook is already wired. settings.json is backed up before any edit, and left
-# untouched if it isn't valid JSON. Needs jq (also required by the hook at runtime).
+# As of the 2026-07-21 consolidation the hooks live in freaxnx01/agent-workflow,
+# alongside the commands they pair with — `handoff-resume` is the other half of
+# /handoff and /pickup, and splitting a command from its hook across repos is
+# worse than keeping both in one place. This script remains a bootstrap entry
+# point: it clones that repo if absent and calls its own hook link step.
+#
+# Idempotent: re-running refreshes the scripts and is a no-op on settings.json if
+# the hook is already wired. Needs jq (also required by the hook at runtime).
 #
 # Usage (existing machine, repo already cloned):
-#   ~/repos/github/freaxnx01/public/config/setup/02-claude-hooks.sh
+#   ~/repos/github/freaxnx01/public/config/setup/02-claude-hooks.sh [--no-sync]
 #
 # Usage (new machine, nothing cloned yet — single-line bootstrap):
 #   curl -fsSL https://raw.githubusercontent.com/freaxnx01/config/main/setup/02-claude-hooks.sh | bash
 
 set -euo pipefail
 
-REPO_URL="https://github.com/freaxnx01/config.git"
-REPO_DIR="$HOME/repos/github/freaxnx01/public/config"
-SRC="$REPO_DIR/claude/hooks/handoff-resume.sh"
-HOOK_DIR="$HOME/.claude/hooks"
-DEST="$HOOK_DIR/handoff-resume.sh"
-SETTINGS="$HOME/.claude/settings.json"
-CMD='$HOME/.claude/hooks/handoff-resume.sh'
+AP_REPO_URL="https://github.com/freaxnx01/agent-workflow.git"
+AP_REPO_DIR="$HOME/repos/github/freaxnx01/public/agent-workflow"
+AP_LINK="$AP_REPO_DIR/setup/link-hooks.sh"
 
-# 1) Clone or fast-forward the config repo at the canonical path.
-if [ ! -d "$REPO_DIR/.git" ]; then
-  echo "→ cloning config repo to $REPO_DIR"
-  mkdir -p "$(dirname "$REPO_DIR")"
-  git clone "$REPO_URL" "$REPO_DIR"
-else
-  echo "→ pulling latest at $REPO_DIR"
-  git -C "$REPO_DIR" pull --ff-only
+sync=1
+for arg in "$@"; do
+  case "$arg" in
+    --no-sync) sync=0 ;;
+  esac
+done
+
+# Clone agent-workflow if absent, so the "one curl sets up a machine" promise
+# survives the hooks living in a separate repo.
+if [ "$sync" = 1 ] && [ ! -d "$AP_REPO_DIR/.git" ]; then
+  echo "→ cloning agent-workflow repo to $AP_REPO_DIR (for hooks)"
+  mkdir -p "$(dirname "$AP_REPO_DIR")"
+  git clone "$AP_REPO_URL" "$AP_REPO_DIR"
 fi
 
-# 2) Install the hook script.
-mkdir -p "$HOOK_DIR"
-cp -f "$SRC" "$DEST"
-chmod +x "$DEST"
-echo "→ installed hook script to $DEST"
-
-# 3) Wire it into settings.json (or print the snippet if jq is unavailable).
-snippet='   { "matcher": "clear", "hooks": [ { "type": "command", "command": "'"$CMD"'" } ] }'
-if ! command -v jq >/dev/null 2>&1; then
-  echo "⚠ jq not found — add this to $SETTINGS under hooks.SessionStart, then install jq:"
-  echo "$snippet"
-  exit 0
-fi
-
-[ -f "$SETTINGS" ] || { mkdir -p "$(dirname "$SETTINGS")"; echo '{}' > "$SETTINGS"; }
-if ! jq -e . "$SETTINGS" >/dev/null 2>&1; then
-  echo "⚠ $SETTINGS is not valid JSON — leaving it untouched. Add manually:"
-  echo "$snippet"
+if [ ! -f "$AP_LINK" ]; then
+  echo "⚠ agent-workflow hook link step not found at $AP_LINK — hooks NOT installed." >&2
+  echo "  Clone https://github.com/freaxnx01/agent-workflow and re-run, or run with sync enabled." >&2
   exit 1
 fi
 
-# Match by script basename, not exact string, so an existing entry written with an
-# absolute path (or different $HOME spelling) still counts as present — avoids a
-# near-duplicate that would inject the resume context twice.
-present='([ (.hooks.SessionStart // [])[] | select(.matcher? == "clear") | .hooks[]? | .command? | select(. != null) | select(test("handoff-resume\\.sh")) ] | length) > 0'
-if jq -e "$present" "$SETTINGS" >/dev/null 2>&1; then
-  echo "✓ settings.json already wires the hook — nothing to do"
-  exit 0
-fi
+ap_args=()
+[ "$sync" = 0 ] && ap_args+=(--no-sync)
 
-cp "$SETTINGS" "$SETTINGS.bak.$(date +%Y%m%d%H%M%S)"
-tmp="$(mktemp)"
-jq --arg c "$CMD" '
-  .hooks = (.hooks // {})
-  | .hooks.SessionStart = (.hooks.SessionStart // [])
-  | (.hooks.SessionStart | map(.matcher? == "clear") | index(true)) as $i
-  | if $i == null
-    then .hooks.SessionStart += [{matcher:"clear", hooks:[{type:"command", command:$c}]}]
-    else .hooks.SessionStart[$i].hooks = ((.hooks.SessionStart[$i].hooks // []) + [{type:"command", command:$c}])
-    end
-' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
-echo "✓ wired hook into $SETTINGS (backup saved alongside it)"
+echo "→ installing hooks via $AP_LINK"
+bash "$AP_LINK" ${ap_args[@]+"${ap_args[@]}"}

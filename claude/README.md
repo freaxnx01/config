@@ -8,11 +8,13 @@ and picks up changes with a `git pull`.
 |------|--------------|
 | [`task-checklist.md`](task-checklist.md) | Makes Claude present action items it hands back to you as `- [ ]` Markdown checkboxes. |
 | [`skill-authoring.md`](skill-authoring.md) | When creating or editing a skill, makes it **self-improving** — appends a "fix blockers and update yourself" instruction to the skill body (plus the don't-be-prescriptive / mention-tools rules). |
-| [`subagent-driven-default.md`](subagent-driven-default.md) | Makes Claude execute approved implementation plans with `superpowers:subagent-driven-development` **by default** (unless told otherwise). Pairs with the [`/subagent-driven`](commands/subagent-driven.md) command for explicit re-assertion. |
+| [`subagent-driven-default.md`](subagent-driven-default.md) | Makes Claude execute approved implementation plans with `superpowers:subagent-driven-development` **by default** (unless told otherwise). Pairs with the [`/subagent-driven`](https://github.com/freaxnx01/agent-workflow/blob/main/commands/subagent-driven.md) command for explicit re-assertion. |
 
 > Looking for **slash commands** (`/loose-ends`, `/clear-check`, `/handoff`,
-> `/pickup`, `/subagent-driven`)? Those live in [`commands/`](commands/) — they're
-> installed via symlink, not `@`-imported.
+> `/pickup`, `/subagent-driven`)? As of 2026-07-21 every command lives in
+> [agent-workflow](https://github.com/freaxnx01/agent-workflow)`/commands/`,
+> installed as copies by this repo's bootstrap — not `@`-imported. The
+> `handoff-resume` hook moved with them.
 
 ## Setup in a new environment
 

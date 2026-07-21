@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # setup/01-claude-commands.sh
 #
-# Ensure the shared Claude Code slash commands in this repo are cloned at the
-# canonical path AND installed into your user-level commands dir (~/.claude/commands/).
+# Install the user-level Claude Code slash commands into ~/.claude/commands/.
+#
+# As of the 2026-07-21 consolidation, ALL commands live in freaxnx01/agent-workflow.
+# This script remains the single bootstrap entry point: it clones that repo if
+# absent and calls its link step. config itself ships no commands.
 #
 # Unlike partials, slash commands cannot be @-included — they must physically
 # live in ~/.claude/commands/. Default is symlink (a `git pull` here then updates
@@ -20,8 +23,6 @@ set -euo pipefail
 
 REPO_URL="https://github.com/freaxnx01/config.git"
 REPO_DIR="$HOME/repos/github/freaxnx01/public/config"
-SRC_DIR="$REPO_DIR/claude/commands"
-DEST_DIR="$HOME/.claude/commands"
 
 mode="link"
 sync=1
@@ -44,30 +45,9 @@ if [ "$sync" = 1 ]; then
   fi
 fi
 
-# 2) Make sure ~/.claude/commands/ exists.
-mkdir -p "$DEST_DIR"
-
-# 3) Install each command .md, preserving subdirs (which become /namespace:cmd).
-#    Skip any README.md at the top level or inside namespace dirs.
-echo "→ installing commands into $DEST_DIR ($mode)"
-while IFS= read -r f; do
-  rel="${f#"$SRC_DIR"/}"
-  case "$rel" in README.md|*/README.md) continue ;; esac
-  dest="$DEST_DIR/$rel"
-  mkdir -p "$(dirname "$dest")"
-  if [ "$mode" = "copy" ]; then
-    rm -f "$dest"        # dest may be a symlink from a prior install → cp would error
-    cp -f "$f" "$dest"
-    echo "  copied  $rel"
-  else
-    ln -sfn "$f" "$dest"
-    echo "  linked  $rel"
-  fi
-done < <(find "$SRC_DIR" -type f -name '*.md')
-
-# 4) Install the agent-workflow operator-console commands (issue-workflow routers
-#    + gh:/fj: families). They live in a SEPARATE repo now; config stays the single
-#    orchestrator by cloning it if absent and calling its own link step, so the
+# 2) Install ALL user-level commands from agent-workflow. config no longer ships
+#    commands of its own -- the whole surface consolidated there. config stays the
+#    single bootstrap orchestrator by cloning it if absent and calling its link step, so the
 #    "one curl sets up a machine" promise survives.
 AP_REPO_URL="https://github.com/freaxnx01/agent-workflow.git"
 AP_REPO_DIR="$HOME/repos/github/freaxnx01/public/agent-workflow"
@@ -90,4 +70,4 @@ else
   echo "  Clone https://github.com/freaxnx01/agent-workflow and re-run, or run with sync enabled." >&2
 fi
 
-echo "✓ done — type / in any project to see the commands (generic from config, console from agent-workflow)"
+echo "✓ done — type / in any project to see the commands (all from agent-workflow)"
