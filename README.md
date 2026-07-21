@@ -1,7 +1,7 @@
 # freaxnx01/config
 
 Version-controlled, cross-machine **Claude Code** configuration — CLAUDE.md
-partials, slash commands, and hooks — plus other personal config (oh-my-posh,
+partials — plus other personal config (oh-my-posh,
 Windows). Public, so any machine can pull it with no auth.
 
 ## Set up a new machine (one URL)
@@ -18,8 +18,8 @@ setup steps idempotently:
 | Step | Script | Installs |
 |------|--------|----------|
 | Partials | [`setup/00-claude-partials.sh`](setup/00-claude-partials.sh) | `@`-imports into `~/.claude/CLAUDE.md` (task-checklist, skill-authoring, subagent-driven-default) |
-| Commands | [`setup/01-claude-commands.sh`](setup/01-claude-commands.sh) | Generic slash commands from this repo **plus** the issue-workflow console from [agent-workflow](https://github.com/freaxnx01/agent-workflow) (cloned + linked automatically) into `~/.claude/commands/` — see [list](claude/commands/README.md) |
-| Hooks | [`setup/02-claude-hooks.sh`](setup/02-claude-hooks.sh) | `handoff-resume` SessionStart(clear) hook + `settings.json` wiring |
+| Commands | [`setup/01-claude-commands.sh`](setup/01-claude-commands.sh) | All 46 user-level slash commands from [agent-workflow](https://github.com/freaxnx01/agent-workflow) (cloned + installed automatically) into `~/.claude/commands/` — see [list](https://github.com/freaxnx01/agent-workflow/blob/main/commands/README.md) |
+| Hooks | [`setup/02-claude-hooks.sh`](setup/02-claude-hooks.sh) | `handoff-resume` SessionStart(clear) hook from [agent-workflow](https://github.com/freaxnx01/agent-workflow) + `settings.json` wiring |
 
 **Requirements:** `git` and `jq` (the handoff hook needs `jq` at runtime). Commands
 are symlinked, so later updates are just `git -C ~/repos/github/freaxnx01/public/config pull`.
@@ -53,8 +53,9 @@ Start a fresh Claude Code session, then:
 
 ## What's here
 
-- [`claude/`](claude/) — partials, generic [commands](claude/commands/README.md), and [hooks](claude/hooks/)
-  (the issue-workflow console commands live in [agent-workflow](https://github.com/freaxnx01/agent-workflow)`/commands/`, installed by the same bootstrap)
+- [`claude/`](claude/) — CLAUDE.md partials only. As of 2026-07-21 every slash
+  command and hook lives in [agent-workflow](https://github.com/freaxnx01/agent-workflow)
+  (`commands/`, `hooks/`), installed by this repo's bootstrap.
 - [`setup/`](setup/) — the idempotent installers above
 - `oh-my-posh/`, `windows/` — other personal config
 
