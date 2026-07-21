@@ -31,6 +31,7 @@ fi
 bash "$REPO_DIR/setup/00-claude-partials.sh"
 bash "$REPO_DIR/setup/01-claude-commands.sh" "$@"
 bash "$REPO_DIR/setup/02-claude-hooks.sh"
+bash "$REPO_DIR/setup/03-claude-skills.sh"
 
 echo
 echo "✓ bootstrap complete — start a new Claude Code session, then run /commands and /memory to verify."
