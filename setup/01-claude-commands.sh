@@ -69,12 +69,8 @@ done < <(find "$SRC_DIR" -type f -name '*.md')
 #    + gh:/fj: families). They live in a SEPARATE repo now; config stays the single
 #    orchestrator by cloning it if absent and calling its own link step, so the
 #    "one curl sets up a machine" promise survives.
-# NOTE: the repo is being renamed freaxnx01/agent-pipeline -> freaxnx01/agent-workflow.
-# Until that rename lands, these two values MUST stay "agent-pipeline" (the URL
-# would 404 and the local clone still lives at the old path). Flip both when the
-# GitHub rename happens.
-AP_REPO_URL="https://github.com/freaxnx01/agent-pipeline.git"
-AP_REPO_DIR="$HOME/repos/github/freaxnx01/public/agent-pipeline"
+AP_REPO_URL="https://github.com/freaxnx01/agent-workflow.git"
+AP_REPO_DIR="$HOME/repos/github/freaxnx01/public/agent-workflow"
 AP_LINK="$AP_REPO_DIR/setup/link-commands.sh"
 
 if [ "$sync" = 1 ] && [ ! -d "$AP_REPO_DIR/.git" ]; then
@@ -91,7 +87,7 @@ if [ -f "$AP_LINK" ]; then
   bash "$AP_LINK" ${ap_args[@]+"${ap_args[@]}"}
 else
   echo "⚠ agent-workflow link step not found at $AP_LINK — console commands (gh:/fj:/routers) NOT installed." >&2
-  echo "  Clone https://github.com/freaxnx01/agent-pipeline and re-run, or run with sync enabled." >&2
+  echo "  Clone https://github.com/freaxnx01/agent-workflow and re-run, or run with sync enabled." >&2
 fi
 
 echo "✓ done — type / in any project to see the commands (generic from config, console from agent-workflow)"

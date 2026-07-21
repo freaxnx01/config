@@ -7,7 +7,7 @@ source repos, both installed into `~/.claude/commands/`:
 
 - **[freaxnx01/config](https://github.com/freaxnx01/config)** (`~/repos/github/freaxnx01/public/config`)
   — the generic commands (session hygiene, handoff/pickup, `wt:*`, meta).
-- **[freaxnx01/agent-workflow](https://github.com/freaxnx01/agent-pipeline)** (`~/repos/github/freaxnx01/public/agent-pipeline`)
+- **[freaxnx01/agent-workflow](https://github.com/freaxnx01/agent-workflow)** (`~/repos/github/freaxnx01/public/agent-workflow`)
   — the issue-workflow operator console (forge routers, `gh:*`, `fj:*`, `capture-idea`).
 
 Steps:
@@ -26,7 +26,7 @@ Steps:
 
    ```bash
    git -C ~/repos/github/freaxnx01/public/config         log --oneline @{1}.. 2>/dev/null
-   git -C ~/repos/github/freaxnx01/public/agent-pipeline log --oneline @{1}.. 2>/dev/null
+   git -C ~/repos/github/freaxnx01/public/agent-workflow log --oneline @{1}.. 2>/dev/null
    ```
 
    If nothing changed in either, just say "Already up to date."
