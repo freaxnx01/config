@@ -1,0 +1,21 @@
+name: Claude
+on:
+  issues:
+    types: [labeled]
+
+permissions:            # a reusable workflow can't be granted more than its
+  contents: write       # caller; the repo's default GITHUB_TOKEN is read-only,
+  pull-requests: write  # so omitting this fails the run at startup_failure.
+  issues: write
+
+jobs:
+  claude:
+    if: github.event.label.name == 'ai-implement'
+    uses: freaxnx01/agent-workflow/.github/workflows/agent-implement.yml@v1
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    with:
+      issue-number: ${{ github.event.issue.number }}
+      runner-labels: '["ubuntu-latest"]'
+      default-model: claude-sonnet-5
+      pipeline-ref: v1
