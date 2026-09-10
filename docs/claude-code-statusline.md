@@ -60,13 +60,14 @@ Restart Claude Code — the status bar appears at the bottom of every session.
 |---------|-------|
 | **Path** | Inside a git repo: repo name + relative path. Outside: plain path. Fish-style shortened. |
 | **Git** | Branch, upstream icon, working/staged change counts, ahead/behind coloring |
+| **Ctx %** | Context window used, as a percent. Background: dark below 60%, yellow 60–79%, red 80%+ |
 
 ### Right
 
 | Segment | Shows |
 |---------|-------|
 | **Model** | Current Claude model display name (e.g. `Sonnet 4.6`) |
-| **Ctx** | Token count / context window size / usage % (e.g. `14.1K/400K (0%)`) |
+| **Ctx** | Token count / context window size (e.g. `14.1K/400K`). The usage percent lives in the left block's **Ctx %** chip. |
 | **Usage** | 5-hour session usage % + reset time · 7-day usage % + reset date |
 | **Battery** | Charge %, color-coded by state (charging / discharging / full) |
 
@@ -115,6 +116,9 @@ Trade-off: with everything left-aligned, on a narrow terminal the bar runs long
 and truncates on the right instead of staying glued to the edge. At typical
 widths it's just a tidy single bar.
 
-> Note: the live Windows config (`%USERPROFILE%\.claude\claude-code.omp.json`)
-> also adds a leading `session` (hostname) segment that the Linux variant in
-> this repo omits.
+> Note: both live configs have **diverged** from this repo copy — they merge the
+> two blocks into a single left-aligned block and tweak the palette, and the WSL2
+> one adds a battery segment. Re-running the `cp` in Setup overwrites those edits.
+> The live paths are `~/.claude.omp.json` on WSL2 and `%USERPROFILE%\.claude.omp.json`
+> on Windows (beside `.claude\`, not inside it) — authority is each side's
+> `~/.claude/settings.json` → `statusLine.command`.
